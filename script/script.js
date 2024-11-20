@@ -323,13 +323,30 @@ function displaySolde() {
 }
 
 document.getElementById("reset-button").addEventListener("click", function () {
-    // Effacer les transactions
-    transactions = [];
-    localStorage.setItem("transactions", JSON.stringify(transactions));
+    // Ouvrir la modale de confirmation
+    const modal = document.getElementById("confirmationModal");
+    modal.style.display = "block";
 
-    // Mettre à jour l'affichage
-    displayTransactions();
-    displaySolde();
+    // Ajouter un gestionnaire d'evenement pour le bouton de confirmation
+    const confirmButton = document.getElementById("confirmReset");
+    confirmButton.addEventListener("click", function () {
+        // Fermer la modale
+        modal.style.display = "none";
+
+        // Effacer les transactions
+        transactions = [];
+        localStorage.setItem("transactions", JSON.stringify(transactions));
+
+        // Mettre à jour l'affichage
+        displayTransactions();
+        displaySolde();
+    });
+    // Ajouter un gestionnaire d'evenement pour le bouton de annulation
+    const cancelButton = document.getElementById("cancelReset");
+    cancelButton.addEventListener("click", function () {
+        // Fermer la modale
+        modal.style.display = "none";
+    });
 });
 
 function editTransaction(index) {

@@ -13,6 +13,7 @@
     <main>
         <h1>Gestion de budget</h1>
         <div id="solde"></div>
+        <button id="reset-button">Supprimer les transactions</button>
         <form id="transaction-form">
             <div class="checkbox-container">
                 <label for="recurrent">Récurrent</label>
@@ -30,10 +31,18 @@
             <label for="description">Description:</label>
             <textarea id="description" name="description" rows="4"></textarea>
             <input id="submit-button" type="submit" value="Créer une nouvelle transaction">
-            <button id="reset-button">Tout reset</button>
         </form>
         <div id="transactions"></div>
     </main>
     <footer></footer>
+    <!-- Modal Structure -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <p>Êtes-vous sûr de vouloir tout réinitialiser ?</p>
+            <button id="confirmReset">Réinitialiser</button>
+            <button id="cancelReset">Annuler</button>
+        </div>
+    </div>
 </body>
 </html>
