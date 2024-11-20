@@ -1,0 +1,307 @@
+/*! miniresetcss v0.0.6 | MIT License | github.com/jgthms/minireset.css */
+html, body, p, ol, ul, li, dl, dt, dd, blockquote, figure, fieldset, legend, textarea, input, button, pre, iframe, hr, h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-size: 100%;
+  font-weight: normal;
+}
+
+ul {
+  list-style: none;
+}
+
+button, input, select {
+  margin: 0;
+}
+
+html {
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+img, video {
+  height: auto;
+  max-width: 100%;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+td, th {
+  padding: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* style.css */
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #121212;
+  color: #ffffff;
+  margin: 0;
+  padding: 0;
+}
+
+h1 {
+  text-align: center;
+  font-size: 50px;
+  margin-top: 20px;
+  color: #ffffff;
+}
+
+#solde {
+  text-align: center;
+  font-size: 40px;
+  margin-bottom: 20px;
+  color: #ffffff;
+}
+
+input {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  background-color: #1e1e1e;
+  color: #ffffff;
+}
+
+.transaction {
+  display: flex;
+  justify-content: space-between;
+  width: 80%;
+  margin: 10px auto;
+  padding: 15px;
+  margin-bottom: 10px;
+  background-color: #1e1e1e;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s;
+  align-items: center;
+}
+
+.transaction-icon {
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
+}
+
+.transaction-icon img {
+  width: 30px;
+  height: 30px;
+}
+
+.transaction-details {
+  flex: 1;
+}
+
+.transaction-details h2 {
+  margin: 0;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.transaction-details p {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.transaction-amount {
+  font-size: 24px;
+  margin-right: 10px;
+}
+
+.transaction .supprimer-transaction {
+  background-color: #f00;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.transaction .supprimer-transaction:hover {
+  background-color: #c00;
+}
+
+form {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 20px;
+  background-color: #1e1e1e;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+form h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #4CAF50;
+}
+
+form label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+form input, form select, form textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #1e1e1e;
+  color: #ffffff;
+}
+
+form input[type="submit"] {
+  background-color: #4CAF50;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+form input[type="submit"]:hover {
+  background-color: #3e8e41;
+}
+
+form .erreur {
+  color: #f00;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+#reset-button {
+  background-color: #f00;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 20px;
+}
+
+#reset-button:hover {
+  background-color: #c00;
+}
+
+.depense p:nth-child(2){
+  color: red;
+}
+
+.depense .icon-transaction{
+  color: red;
+}
+
+.revenu p:nth-child(2){
+  color: green;
+}
+
+.revenu .icon-transaction {
+  color: green;
+}
+
+.recurrent {
+  background-color: hsl(240, 48%, 10%);
+}
+
+.month-year {
+  text-align: center;
+  font-size: 24px;
+  margin: 20px 0;
+  color: #ffffff;
+  background-color: #333;
+  padding: 10px 0;
+  border-radius: 5px;
+}
+/* Styles pour le label et l'input checkbox */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.checkbox-container input[type="checkbox"] {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  background-color: #1e1e1e;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+  margin-right: 10px;
+}
+
+.checkbox-container input[type="checkbox"]:checked {
+  background-color: #4CAF50;
+  border-color: #4CAF50;
+}
+
+.checkbox-container label {
+  font-size: 16px;
+  color: #ffffff;
+  cursor: pointer;
+  padding-right: 10px;
+}
+
+.checkbox-container input[type="checkbox"]:focus {
+  outline: none;
+}
+
+.negatif {
+  color: red;  /* Texte rouge pour les soldes négatifs */
+  font-weight: bold;
+}
+/* Styles pour le bouton de modification */
+.modifier-transaction {
+  background-color: #555;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-left: 10px;
+}
+
+.modifier-transaction:hover {
+  background-color: #666;
+}
+
+.icon-edit {
+  color: #1e1e1e;
+}
+
+/* Styles pour le bouton de suppression */
+.supprimer-transaction {
+  background-color: transparent;
+  color: #f00;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: color 0.2s;
+  margin-left: 10px;
+}
+
