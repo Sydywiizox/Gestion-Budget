@@ -232,7 +232,7 @@ function displayTransactions() {
                 if (compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today)) && !todayMarker) {
                     const todayDiv = document.createElement("div");
                     todayDiv.className = "today-marker";
-                    todayDiv.textContent = "Transactions à jour";
+                    todayDiv.textContent = "Aujourd'hui";
                     transactionElement.prepend(todayDiv);
                     todayMarker = true
                 }
