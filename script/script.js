@@ -268,8 +268,14 @@ function displayTransactions() {
                 const dateParagraph = document.createElement("p");
                 dateParagraph.textContent = `Date : ${formatDate(
                     transactionObj.date
-                )} ${compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today)) ? "<i class="fa-regular fa-calendar"></i>" : ""}`;
+                )}`;
 
+                if(compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today))) {
+                    // Create the <i> element
+                    var iconElement = document.createElement('i');                    
+                    // Set the class attribute
+                    iconElement.className = 'fa-regular fa-calendar';
+                }
                 const montantParagraph = document.createElement("p");
                 montantParagraph.textContent = `Montant : ${transactionObj.montant} €`;
                 montantParagraph.className = "transaction-amount";
@@ -324,6 +330,7 @@ function displayTransactions() {
                 // Ajouter les éléments au div de la transaction
                 transactionDetails.appendChild(dateParagraph);
                 transactionDetails.appendChild(montantParagraph);
+                transactionDetails.appendChild(iconElement);
 
                 if (transactionObj.description) {
                     transactionDetails.appendChild(descriptionParagraph);
