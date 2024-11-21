@@ -268,7 +268,7 @@ function displayTransactions() {
                 const dateParagraph = document.createElement("p");
                 dateParagraph.textContent = `Date : ${formatDate(
                     transactionObj.date
-                )} ${compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today)) ? "(Plannifié)" : ""}`;
+                )} ${compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today)) ? "(Plannifiée)" : ""}`;
 
                 const montantParagraph = document.createElement("p");
                 montantParagraph.textContent = `Montant : ${transactionObj.montant} €`;
