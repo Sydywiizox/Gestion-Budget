@@ -57,8 +57,8 @@ document
         const description = document.getElementById("description").value;
         const montant =
             type === "depense"
-                ? -parseInt(document.getElementById("montant").value)
-                : parseInt(document.getElementById("montant").value);
+                ? -parseFloat(document.getElementById("montant").value)
+                : parseFloat(document.getElementById("montant").value);
         const recurrent = document.getElementById("recurrent").checked;
 
         if (currentTransactionId !== null) {
@@ -180,10 +180,6 @@ function compareDates(date1, date2) {
     const date1Month = parseInt(date1Parts[1]);
     const date2Year = parseInt(date2Parts[0]);
     const date2Month = parseInt(date2Parts[1]);
-    //compareDates("2024-11-20", "2024-12-25") => false
-    //compareDates("2024-11-20", "2024-11-25") => true
-    //compareDates("2024-11-20", "2024-10-25") => true
-    //creer des consoles logs des commentaires au dessus
 
     console.log(date1Year, date1Month, date2Year, date2Month);
     return (
