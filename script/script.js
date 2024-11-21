@@ -3,13 +3,12 @@ const today = new Date();
 const year = today.getFullYear();
 const month = today.getMonth() + 1; // janvier est 0, février est 1, etc.
 const day = today.getDate();
-
 console.log(localStorage.getItem("transactions"));
 let transactions = localStorage.getItem("transactions")
     ? JSON.parse(localStorage.getItem("transactions"))
     : [];
 let solde = getSolde();
-let currentTransactionIndex = null;
+let currentTransactionId = null;
 
 document.getElementById("reset-button").addEventListener("click", function (e) {
     e.preventDefault();
@@ -45,6 +44,10 @@ function getProjectedSolde() {
     return solde;
 }
 
+function generateUniqueId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
+
 document
     .getElementById("transaction-form")
     .addEventListener("submit", function (e) {
@@ -58,101 +61,152 @@ document
                 : parseInt(document.getElementById("montant").value);
         const recurrent = document.getElementById("recurrent").checked;
 
-        if (currentTransactionIndex !== null) {
+        if (currentTransactionId !== null) {
             // Modifier la transaction existante
-            transactions[currentTransactionIndex] = {
+            const index = transactions.findIndex(
+                (t) => t.id === currentTransactionId
+            );
+            transactions[index] = {
+                id: currentTransactionId,
                 date: date,
                 montant: montant,
                 type: type,
                 description: description,
-                solde: getSolde() + montant,
                 recurrent: recurrent,
-                lastExecution: date,
             };
-            currentTransactionIndex = null;
+            currentTransactionId = null;
             //remet la valeur du bouton submit a créer une nouvelle transaction
             document.getElementById("submit-button").value =
                 "Créer une nouvelle transaction";
         } else {
             // Ajouter une nouvelle transaction
             const transaction = {
+                id: generateUniqueId(),
                 date: date,
                 montant: montant,
                 type: type,
                 description: description,
                 solde: getSolde() + montant,
                 recurrent: recurrent,
-                lastExecution: date,
+                recurrentId: generateUniqueId(),
             };
             transactions.push(transaction);
         }
 
         localStorage.setItem("transactions", JSON.stringify(transactions));
+        handleRecurringTransactions();
         displayTransactions();
         this.reset();
         dateInputReset();
         displaySolde();
     });
+    function formatDateToYYYYMMDD(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
 
+    
+    function compareDatesYYYYMMDD(date1, date2) {
+        const [year1, month1, day1] = date1.split("-");
+        const [year2, month2, day2] = date2.split("-");
+        if (year1 === year2 && month1 === month2 && day1 === day2) {
+            return false;
+        } else if (year1 < year2 || (year1 === year2 && month1 < month2) || (year1 === year2 && month1 === month2 && day1 < day2)) {
+            return false;
+        } else {
+            return true;
+        }
+    }
 function handleRecurringTransactions() {
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-
+    // si une transaction est recurrente, on ajoute une nouvelle transaction avec la date du mois suivant si elle n'existe pas et qu'on est dans le mois en question
     transactions.forEach((transaction) => {
         if (transaction.recurrent) {
-            const lastExecutionDate = new Date(transaction.lastExecution);
-            const lastMonth = lastExecutionDate.getMonth();
-            const lastYear = lastExecutionDate.getFullYear();
+            const nextMonthDate = addMonthToDate(transaction.date);
+            const today = formatDateToYYYYMMDD(new Date());
 
-            // Ajouter une nouvelle transaction uniquement si elle n'a pas été exécutée pour le mois actuel
-            if (
-                currentYear > lastYear ||
-                (currentYear === lastYear && currentMonth > lastMonth)
-            ) {
+            //verifie si la transaction a le meme recurrentId que la transaction actuelle et la date nextmonthdate
+            const existingTransaction = transactions.find(
+                (t) =>
+                    t.recurrentId === transaction.recurrentId &&
+                    t.date === nextMonthDate
+            );
+            if (!existingTransaction && compareDates(today, nextMonthDate)) {
                 const newTransaction = {
-                    ...transaction,
+                    id: generateUniqueId(),
+                    date: nextMonthDate,
+                    montant: transaction.montant,
+                    type: transaction.type,
+                    description: transaction.description,
                     solde: getSolde() + transaction.montant,
-                    date: addMonthToDate(transaction.date),
-                    lastExecution: `${currentYear}-${String(
-                        currentMonth + 1
-                    ).padStart(2, "0")}-01`,
+                    recurrent: transaction.recurrent,
+                    recurrentId: transaction.recurrentId,
                 };
-
-                delete newTransaction.lastExecution; // Supprimer la date précédente pour éviter la confusion
-
-                // Ajouter la nouvelle transaction
                 transactions.push(newTransaction);
-
-                // Mettre à jour la date de dernière exécution dans l'ancienne transaction
-                transaction.lastExecution = newTransaction.lastExecution;
+                handleRecurringTransactions();
+                localStorage.setItem(
+                    "transactions",
+                    JSON.stringify(transactions)
+                );
             }
         }
     });
-
-    // Sauvegarder les modifications dans le localStorage
-    localStorage.setItem("transactions", JSON.stringify(transactions));
 }
 
 // Fonction qui ajoute 1 mois à une date au format YYYY-MM-DD
+//Je veux que si on met le 31/10/2023, il se mette au 30/11/2024 (si il n'y a pas de 31/11/2024)
 function addMonthToDate(dateString) {
     const date = new Date(dateString);
+
+    // Ajouter un mois
     date.setMonth(date.getMonth() + 1);
+
+    // Vérifier si le jour d'origine est conservé
+    if (date.getDate() < new Date(dateString).getDate()) {
+        // Ajuster la date au dernier jour du mois si le mois suivant est plus court
+        date.setDate(0); // Cela met la date au dernier jour du mois précédent
+    }
+
+    // Retourner la date au format YYYY-MM-DD
     return date.toISOString().split("T")[0];
 }
 
+//fonction qui compare deux dates au format YYYY-MM-DD et qui retourne si le mois + l'année de la date est passé
+function compareDates(date1, date2) {
+    const date1Parts = date1.split("-");
+    const date2Parts = date2.split("-");
+    const date1Year = parseInt(date1Parts[0]);
+    const date1Month = parseInt(date1Parts[1]);
+    const date2Year = parseInt(date2Parts[0]);
+    const date2Month = parseInt(date2Parts[1]);
+    //compareDates("2024-11-20", "2024-12-25") => false
+    //compareDates("2024-11-20", "2024-11-25") => true
+    //compareDates("2024-11-20", "2024-10-25") => true
+    //creer des consoles logs des commentaires au dessus
+
+    console.log(date1Year, date1Month, date2Year, date2Month);
+    return (
+        date1Year > date2Year ||
+        (date1Year === date2Year && date1Month >= date2Month)
+    );
+}
+
+
 function displayTransactions() {
     console.log(transactions);
+    let todayMarker = false
     const transactionElement = document.getElementById("transactions");
     transactionElement.innerHTML = ""; // Effacer le contenu existant
 
     // Trier les transactions par date descendant
-    transactions.sort((a, b) => {
+    transactions.sort((b, a) => {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
         return dateB - dateA;
     });
 
+    let soldeTransactions = 0;
     // Regrouper les transactions par mois
     const groupedTransactions = {};
     transactions.forEach((transaction) => {
@@ -169,15 +223,23 @@ function displayTransactions() {
             const monthYearElement = document.createElement("h3");
             monthYearElement.className = "month-year";
             monthYearElement.textContent = formatMonthYear(monthYear);
-            transactionElement.appendChild(monthYearElement);
 
-            groupedTransactions[monthYear].forEach((transaction, index) => {
+            groupedTransactions[monthYear].forEach((transaction) => {
                 const transactionObj = transaction; // Convertir l'objet JSON en objet JavaScript
-
+                // Ajouter "Aujourd’hui" avant la première transaction du jour
+                console.log(transactionObj.date, formatDateToYYYYMMDD(today));
+                
+                if (compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today)) && !todayMarker) {
+                    const todayDiv = document.createElement("div");
+                    todayDiv.className = "today-marker";
+                    todayDiv.textContent = "Transactions à jour";
+                    transactionElement.prepend(todayDiv);
+                    todayMarker = true
+                }
                 // Créer les éléments HTML
                 const transactionDiv = document.createElement("div");
                 transactionDiv.className = "transaction";
-
+                
                 const transactionIcon = document.createElement("div");
                 transactionIcon.className = "transaction-icon";
                 const iconImg = document.createElement("i");
@@ -193,6 +255,9 @@ function displayTransactions() {
                 const transactionDetails = document.createElement("div");
                 transactionDetails.className = "transaction-details";
 
+                if (compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today))) {
+                    transactionDiv.classList.add("futur-marker")
+                }
                 transactionObj.type === "revenu"
                     ? transactionDiv.classList.add("revenu")
                     : transactionDiv.classList.add("depense");
@@ -203,7 +268,7 @@ function displayTransactions() {
                 const dateParagraph = document.createElement("p");
                 dateParagraph.textContent = `Date : ${formatDate(
                     transactionObj.date
-                )}`;
+                )} ${compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today)) ? "(Plannifié)" : ""}`;
 
                 const montantParagraph = document.createElement("p");
                 montantParagraph.textContent = `Montant : ${transactionObj.montant} €`;
@@ -215,11 +280,12 @@ function displayTransactions() {
                 }
 
                 const soldeParagraph = document.createElement("p");
-                soldeParagraph.textContent = `Solde : ${transactionObj.solde} €`;
+                soldeTransactions += transactionObj.montant;
+                soldeParagraph.textContent = `Solde : ${soldeTransactions} €`;
 
                 const buttonSupprimer = document.createElement("button");
                 buttonSupprimer.className = "supprimer-transaction";
-                buttonSupprimer.setAttribute("data-index", index);
+                buttonSupprimer.setAttribute("data-id", transactionObj.id);
 
                 // Créer l'icône Font Awesome
                 const trashIcon = document.createElement("i");
@@ -229,7 +295,8 @@ function displayTransactions() {
                 buttonSupprimer.appendChild(trashIcon);
 
                 buttonSupprimer.addEventListener("click", function () {
-                    const index = parseInt(this.getAttribute("data-index"));
+                    const id = this.getAttribute("data-id");
+                    const index = transactions.findIndex((t) => t.id === id);
                     transactions.splice(index, 1);
                     localStorage.setItem(
                         "transactions",
@@ -241,11 +308,12 @@ function displayTransactions() {
 
                 const buttonModifier = document.createElement("button");
                 buttonModifier.className = "modifier-transaction";
-                buttonModifier.setAttribute("data-index", index);
+                buttonModifier.setAttribute("data-id", transactionObj.id);
                 buttonModifier.innerHTML =
                     '<i class="icon-edit fa-solid fa-pen"></i>';
                 buttonModifier.addEventListener("click", function () {
-                    const index = parseInt(this.getAttribute("data-index"));
+                    const id = this.getAttribute("data-id");
+                    const index = transactions.findIndex((t) => t.id === id);
                     editTransaction(index);
                     //scroll to #transaction-form
                     document
@@ -268,7 +336,9 @@ function displayTransactions() {
                 transactionDiv.appendChild(buttonSupprimer);
 
                 // Ajouter le div de la transaction au conteneur des transactions
-                transactionElement.appendChild(transactionDiv);
+                transactionElement.prepend(transactionDiv);
+                transactionElement.prepend(monthYearElement);
+                
             });
         }
     }
@@ -327,7 +397,7 @@ document.getElementById("reset-button").addEventListener("click", function () {
     const modal = document.getElementById("confirmationModal");
     modal.style.display = "block";
 
-    // Ajouter un gestionnaire d'evenement pour le bouton de confirmation
+    // Ajouter un gestionnaire d'événement pour le bouton de confirmation
     const confirmButton = document.getElementById("confirmReset");
     confirmButton.addEventListener("click", function () {
         // Fermer la modale
@@ -341,7 +411,7 @@ document.getElementById("reset-button").addEventListener("click", function () {
         displayTransactions();
         displaySolde();
     });
-    // Ajouter un gestionnaire d'evenement pour le bouton de annulation
+    // Ajouter un gestionnaire d'événement pour le bouton d'annulation
     const cancelButton = document.getElementById("cancelReset");
     cancelButton.addEventListener("click", function () {
         // Fermer la modale
@@ -357,5 +427,5 @@ function editTransaction(index) {
     document.getElementById("description").value = transaction.description;
     document.getElementById("recurrent").checked = transaction.recurrent;
     document.getElementById("submit-button").value = "Modifier la transaction";
-    currentTransactionIndex = index;
+    currentTransactionId = transaction.id;
 }

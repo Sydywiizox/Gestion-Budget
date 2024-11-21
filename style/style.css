@@ -125,7 +125,7 @@ input {
 }
 
 .transaction .supprimer-transaction {
-  background-color: #f00;
+  background-color: #4e294c;
   color: #fff;
   border: none;
   padding: 5px 10px;
@@ -135,7 +135,7 @@ input {
 }
 
 .transaction .supprimer-transaction:hover {
-  background-color: #c00;
+  background-color: #974660;
 }
 
 form {
@@ -146,12 +146,6 @@ form {
   border: 1px solid #ccc;
   border-radius: 10px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-}
-
-form h2 {
-  text-align: center;
-  margin-bottom: 20px;
-  color: #4CAF50;
 }
 
 form label {
@@ -170,9 +164,13 @@ form input, form select, form textarea {
   background-color: #1e1e1e;
   color: #ffffff;
 }
+form textarea {
+  width: 560px;
+  resize: none;
+}
 
 form input[type="submit"] {
-  background-color: #4CAF50;
+  background-color: #288684;
   color: #fff;
   padding: 10px 20px;
   border: none;
@@ -182,7 +180,7 @@ form input[type="submit"] {
 }
 
 form input[type="submit"]:hover {
-  background-color: #3e8e41;
+  background-color: #1e6160;
 }
 
 form .erreur {
@@ -192,7 +190,7 @@ form .erreur {
 }
 
 #reset-button {
-  background-color: #f00;
+  background-color: #974660;
   color: #fff;
   border: none;
   padding: 10px 20px;
@@ -205,23 +203,23 @@ form .erreur {
 }
 
 #reset-button:hover {
-  background-color: #c00;
+  background-color: #78384c;
 }
 
 .depense p:nth-child(2){
-  color: red;
+  color: #974660;
 }
 
 .depense .icon-transaction{
-  color: red;
+  color: #974660;
 }
 
 .revenu p:nth-child(2){
-  color: green;
+  color: #288684;
 }
 
 .revenu .icon-transaction {
-  color: green;
+  color: #288684;
 }
 
 .recurrent {
@@ -244,6 +242,11 @@ form .erreur {
   margin-bottom: 20px;
 }
 
+.checkbox-container * {
+  margin-bottom: 0;
+}
+
+
 .checkbox-container input[type="checkbox"] {
   appearance: none;
   width: 20px;
@@ -257,8 +260,8 @@ form .erreur {
 }
 
 .checkbox-container input[type="checkbox"]:checked {
-  background-color: #4CAF50;
-  border-color: #4CAF50;
+  background-color: #288684;
+  border-color: #288684;
 }
 
 .checkbox-container label {
@@ -273,7 +276,7 @@ form .erreur {
 }
 
 .negatif {
-  color: red;  /* Texte rouge pour les soldes négatifs */
+  color: #974660;  /* Texte rouge pour les soldes négatifs */
   font-weight: bold;
 }
 /* Styles pour le bouton de modification */
@@ -299,7 +302,7 @@ form .erreur {
 /* Styles pour le bouton de suppression */
 .supprimer-transaction {
   background-color: transparent;
-  color: #f00;
+  color: #974660;
   border: none;
   padding: 5px 10px;
   cursor: pointer;
@@ -325,7 +328,7 @@ form .erreur {
 
 .modal-content {
   background-color: #fefefe;
-  color: red;
+  color: #974660;
   margin: auto;
   padding: 20px;
   border: 1px solid #888;
@@ -362,12 +365,12 @@ form .erreur {
 }
 
 #confirmReset {
-  background-color: #f44336;
+  background-color: #974660;
   color: white;
 }
 
 #confirmReset:hover {
-  background-color: hsl(4, 90%, 50%);
+  background-color: #653041;
 }
 
 #cancelReset {
@@ -377,4 +380,15 @@ form .erreur {
 
 #cancelReset:hover {
   background-color: hsl(0, 0%, 50%);
+}
+
+.today-marker {
+  text-align: center;
+  background-color: #4e294c;
+  line-height: 1.5;
+}
+
+.futur-marker {
+  background-color: #f7b2db;
+  color: #222;
 }
