@@ -96,6 +96,7 @@ input {
   display: flex;
   align-items: center;
   margin-right: 10px;
+  font-size: 35px;
 }
 
 .transaction-icon img {
