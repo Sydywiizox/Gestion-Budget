@@ -119,6 +119,11 @@ input {
   font-size: 14px;
 }
 
+.transaction-details p:first-child {
+  display: inline-block;
+  margin-right: 10px;
+}
+
 .transaction-amount {
   font-size: 24px;
   margin-right: 10px;
