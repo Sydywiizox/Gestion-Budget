@@ -1,3 +1,4 @@
+let soldeInit = 0;
 const dateInput = document.getElementById("date");
 const today = new Date();
 const year = today.getFullYear();
@@ -25,13 +26,15 @@ function dateInputReset() {
 
 // Calculer le solde en fonction de toutes les transactions avant la date actuelle
 function getSolde() {
-    let solde = 0;
+    let solde = soldeInit;
+    console.log(solde)
     transactions.forEach((transaction) => {
         const transactionDate = new Date(transaction.date);
         if (transactionDate <= today) {
             solde += transaction.montant;
         }
     });
+    console.log(solde)
     return solde;
 }
 
@@ -246,8 +249,8 @@ function displayTransactions() {
                     "fa-solid",
                     "icon-transaction",
                     transactionObj.type === "revenu"
-                        ? "fa-piggy-bank"
-                        : "fa-wallet"
+                        ? "fa-arrow-down"
+                        : "fa-arrow-up"
                 );
                 transactionIcon.appendChild(iconImg);
 

@@ -169,6 +169,22 @@ button, input[type="submit"] {
   position: relative;
 }
 
+.recurrent {
+  position: relative;
+  padding-left: 20px; /* Ajoute un padding pour faire de la place à l'icône */
+}
+
+.recurrent::before {
+  content: "\f017"; /* Code Unicode pour l'icône de l'horloge de Font Awesome */
+  font-family: "Font Awesome 5 Free"; /* Assure-toi d'utiliser la bonne police Font Awesome */
+  font-weight: 900; /* Poids de la police pour l'icône régulière */
+  position: absolute;
+  left: 50%; /* Positionne l'icône à gauche */
+  top: 0;
+  font-size: 25px;
+  transform: translate(-50%, -50%);
+}
+
 .transaction-details {
   display: flex;
   justify-content: space-between;
