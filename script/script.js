@@ -330,7 +330,7 @@ function displayTransactions() {
                 // Ajouter les éléments au div de la transaction
                 transactionDetails.appendChild(dateParagraph);
                 transactionDetails.appendChild(montantParagraph);
-                transactionDetails.appendChild(iconElement);
+                if(compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today))) transactionDetails.appendChild(iconElement);
 
                 if (transactionObj.description) {
                     transactionDetails.appendChild(descriptionParagraph);
