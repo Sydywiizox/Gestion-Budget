@@ -9,6 +9,7 @@
             src="https://kit.fontawesome.com/3a1761a339.js"
             crossorigin="anonymous"
         ></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="script/script.js" defer></script>
     </head>
     <body>
@@ -55,6 +56,16 @@
                     value="Créer une nouvelle transaction"
                 />
             </form>
+            <section class="graph-container">
+                
+                <div class="month-controls">
+                    <button id="prevMonth"><i class="fa-solid fa-arrow-left"></i></button>
+                    <div id="monthContainer">
+                    </div>
+                    <button id="nextMonth"><i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+                <canvas id="myChart" width="400" height="200"></canvas>
+            </section>
             <div id="transactions"></div>
         </main>
         <footer></footer>

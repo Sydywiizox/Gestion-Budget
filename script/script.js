@@ -3,13 +3,12 @@ const today = new Date();
 const year = today.getFullYear();
 const month = today.getMonth() + 1; // janvier est 0, février est 1, etc.
 const day = today.getDate();
-console.log(localStorage.getItem("transactions"));
 let transactions = localStorage.getItem("transactions")
     ? JSON.parse(localStorage.getItem("transactions"))
     : [];
 let solde = getSolde();
 let currentTransactionId = null;
-
+console.log(transactions);
 document.getElementById("reset-button").addEventListener("click", function (e) {
     e.preventDefault();
 });
@@ -86,7 +85,6 @@ document
                 montant: montant,
                 type: type,
                 description: description,
-                solde: getSolde() + montant,
                 recurrent: recurrent,
                 recurrentId: generateUniqueId(),
             };
@@ -99,26 +97,30 @@ document
         this.reset();
         dateInputReset();
         displaySolde();
+        updateChart(myChart, currentDate);
     });
-    function formatDateToYYYYMMDD(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-    }
+function formatDateToYYYYMMDD(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
 
-    
-    function compareDatesYYYYMMDD(date1, date2) {
-        const [year1, month1, day1] = date1.split("-");
-        const [year2, month2, day2] = date2.split("-");
-        if (year1 === year2 && month1 === month2 && day1 === day2) {
-            return false;
-        } else if (year1 < year2 || (year1 === year2 && month1 < month2) || (year1 === year2 && month1 === month2 && day1 < day2)) {
-            return false;
-        } else {
-            return true;
-        }
+function compareDatesYYYYMMDD(date1, date2) {
+    const [year1, month1, day1] = date1.split("-");
+    const [year2, month2, day2] = date2.split("-");
+    if (year1 === year2 && month1 === month2 && day1 === day2) {
+        return false;
+    } else if (
+        year1 < year2 ||
+        (year1 === year2 && month1 < month2) ||
+        (year1 === year2 && month1 === month2 && day1 < day2)
+    ) {
+        return false;
+    } else {
+        return true;
     }
+}
 function handleRecurringTransactions() {
     // si une transaction est recurrente, on ajoute une nouvelle transaction avec la date du mois suivant si elle n'existe pas et qu'on est dans le mois en question
     transactions.forEach((transaction) => {
@@ -139,7 +141,6 @@ function handleRecurringTransactions() {
                     montant: transaction.montant,
                     type: transaction.type,
                     description: transaction.description,
-                    solde: getSolde() + transaction.montant,
                     recurrent: transaction.recurrent,
                     recurrentId: transaction.recurrentId,
                 };
@@ -181,17 +182,14 @@ function compareDates(date1, date2) {
     const date2Year = parseInt(date2Parts[0]);
     const date2Month = parseInt(date2Parts[1]);
 
-    console.log(date1Year, date1Month, date2Year, date2Month);
     return (
         date1Year > date2Year ||
         (date1Year === date2Year && date1Month >= date2Month)
     );
 }
 
-
 function displayTransactions() {
-    console.log(transactions);
-    let todayMarker = false
+    let todayMarker = false;
     const transactionElement = document.getElementById("transactions");
     transactionElement.innerHTML = ""; // Effacer le contenu existant
 
@@ -223,19 +221,24 @@ function displayTransactions() {
             groupedTransactions[monthYear].forEach((transaction) => {
                 const transactionObj = transaction; // Convertir l'objet JSON en objet JavaScript
                 // Ajouter "Aujourd’hui" avant la première transaction du jour
-                console.log(transactionObj.date, formatDateToYYYYMMDD(today));
-                
-                if (compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today)) && !todayMarker) {
+
+                if (
+                    compareDatesYYYYMMDD(
+                        transactionObj.date,
+                        formatDateToYYYYMMDD(today)
+                    ) &&
+                    !todayMarker
+                ) {
                     const todayDiv = document.createElement("div");
                     todayDiv.className = "today-marker";
                     todayDiv.textContent = "Aujourd'hui";
                     transactionElement.prepend(todayDiv);
-                    todayMarker = true
+                    todayMarker = true;
                 }
                 // Créer les éléments HTML
                 const transactionDiv = document.createElement("div");
                 transactionDiv.className = "transaction";
-                
+
                 const transactionIcon = document.createElement("div");
                 transactionIcon.className = "transaction-icon";
                 const iconImg = document.createElement("i");
@@ -251,8 +254,13 @@ function displayTransactions() {
                 const transactionDetails = document.createElement("div");
                 transactionDetails.className = "transaction-details";
 
-                if (compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today))) {
-                    transactionDiv.classList.add("futur-marker")
+                if (
+                    compareDatesYYYYMMDD(
+                        transactionObj.date,
+                        formatDateToYYYYMMDD(today)
+                    )
+                ) {
+                    transactionDiv.classList.add("futur-marker");
                 }
                 transactionObj.type === "revenu"
                     ? transactionDiv.classList.add("revenu")
@@ -266,11 +274,16 @@ function displayTransactions() {
                     transactionObj.date
                 )}`;
 
-                if(compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today))) {
+                if (
+                    compareDatesYYYYMMDD(
+                        transactionObj.date,
+                        formatDateToYYYYMMDD(today)
+                    )
+                ) {
                     // Create the <i> element
-                    var iconElement = document.createElement('i');                    
+                    var iconElement = document.createElement("i");
                     // Set the class attribute
-                    iconElement.className = 'fa-regular fa-calendar';
+                    iconElement.className = "fa-regular fa-calendar";
                 }
                 const montantParagraph = document.createElement("p");
                 montantParagraph.textContent = `Montant : ${transactionObj.montant} €`;
@@ -283,7 +296,7 @@ function displayTransactions() {
 
                 const soldeParagraph = document.createElement("p");
                 soldeTransactions += transactionObj.montant;
-                soldeParagraph.textContent = `Solde : ${soldeTransactions} €`;
+                soldeParagraph.textContent = `Solde : ${round(soldeTransactions)} €`;
 
                 const buttonSupprimer = document.createElement("button");
                 buttonSupprimer.className = "supprimer-transaction";
@@ -306,6 +319,7 @@ function displayTransactions() {
                     );
                     displayTransactions();
                     displaySolde();
+                    updateChart(myChart, currentDate);
                 });
 
                 const buttonModifier = document.createElement("button");
@@ -325,8 +339,14 @@ function displayTransactions() {
 
                 // Ajouter les éléments au div de la transaction
                 transactionDetails.appendChild(dateParagraph);
-                if(compareDatesYYYYMMDD(transactionObj.date, formatDateToYYYYMMDD(today))) transactionDetails.appendChild(iconElement);
-                transactionDetails.appendChild(montantParagraph);               
+                if (
+                    compareDatesYYYYMMDD(
+                        transactionObj.date,
+                        formatDateToYYYYMMDD(today)
+                    )
+                )
+                    transactionDetails.appendChild(iconElement);
+                transactionDetails.appendChild(montantParagraph);
 
                 if (transactionObj.description) {
                     transactionDetails.appendChild(descriptionParagraph);
@@ -343,14 +363,10 @@ function displayTransactions() {
                 transactionButtons.appendChild(buttonSupprimer);
                 transactionButtons.appendChild(buttonModifier);
                 transactionDiv.appendChild(transactionButtons);
-                
-
-                
 
                 // Ajouter le div de la transaction au conteneur des transactions
                 transactionElement.prepend(transactionDiv);
                 transactionElement.prepend(monthYearElement);
-                
             });
         }
     }
@@ -393,6 +409,10 @@ function formatDate(dateString) {
     return `${day}/${month}/${year}`;
 }
 
+function round(float) {
+    return Math.round(float * 100) / 100
+}
+
 function displaySolde() {
     const soldeElement = document.getElementById("solde");
     const soldeActuel = getSolde();
@@ -400,17 +420,16 @@ function displaySolde() {
 
     //creer un element pour chaque solde ajoute la class "solde-negatif" si le solde est negatif
     const soldeActuelElement = document.createElement("p");
-    if(soldeActuel < 0) soldeActuelElement.className = "solde-negatif";
-    soldeActuelElement.textContent = `Solde actuel : ${soldeActuel} €`;
+    if (soldeActuel < 0) soldeActuelElement.className = "solde-negatif";
+    soldeActuelElement.textContent = `Solde actuel : ${round(soldeActuel)} €`;
 
     const soldeProjeteElement = document.createElement("p");
-    if(soldeProjete < 0) soldeProjeteElement.className = "solde-negatif";
-    soldeProjeteElement.textContent = `Solde projeté : ${soldeProjete} €`;
+    if (soldeProjete < 0) soldeProjeteElement.className = "solde-negatif";
+    soldeProjeteElement.textContent = `Solde projeté : ${round(soldeProjete) } €`;
 
     soldeElement.innerHTML = "";
     soldeElement.appendChild(soldeActuelElement);
     soldeElement.appendChild(soldeProjeteElement);
-
 }
 
 document.getElementById("reset-button").addEventListener("click", function () {
@@ -431,6 +450,7 @@ document.getElementById("reset-button").addEventListener("click", function () {
         // Mettre à jour l'affichage
         displayTransactions();
         displaySolde();
+        updateChart(myChart, currentDate);
     });
     // Ajouter un gestionnaire d'événement pour le bouton d'annulation
     const cancelButton = document.getElementById("cancelReset");
@@ -450,3 +470,123 @@ function editTransaction(index) {
     document.getElementById("submit-button").value = "Modifier la transaction";
     currentTransactionId = transaction.id;
 }
+
+// Configuration du graphique
+const ctx = document.getElementById("myChart").getContext("2d");
+// Date courante
+let currentDate = new Date(); // Mois actuel
+
+function updateMonthName(date) {
+    const options = { year: "numeric", month: "long" };
+    const formattedMonth = date.toLocaleDateString("fr-FR", options);
+    monthContainer.textContent = formattedMonth.charAt(0).toUpperCase() + formattedMonth.slice(1); // Nom du mois avec la première lettre en majuscule
+}
+
+
+
+// Fonction pour obtenir les transactions du mois et calculer le solde cumulé du début (all) jusqu'aujourd'hui
+function getMonthlyTransactions(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+
+    // Filtrer toutes les transactions avant le mois en cours
+    const allTransactionsBeforeMonth = transactions.filter((transaction) => {
+        const transactionDate = new Date(transaction.date);
+        return (
+            transactionDate.getFullYear() < year || 
+            (transactionDate.getFullYear() === year && transactionDate.getMonth() < month)
+        );
+    });
+
+    // Calculer le solde total avant le mois en cours
+    let soldeTotalAvantMois = allTransactionsBeforeMonth.reduce((acc, transaction) => acc + transaction.montant, 0);
+
+    // Filtrer les transactions pour le mois en cours
+    const monthlyTransactions = transactions.filter((transaction) => {
+        const transactionDate = new Date(transaction.date);
+        return (
+            transactionDate.getFullYear() === year &&
+            transactionDate.getMonth() === month
+        );
+    });
+
+    // Trier les transactions par date croissante
+    monthlyTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const labels = [];
+    const data = [];
+    let soldeCumulatif = soldeTotalAvantMois; // Commence avec le solde total avant le mois
+
+    // Calculer le solde cumulé pour chaque transaction du mois
+    monthlyTransactions.forEach((transaction) => {
+        const transactionDate = new Date(transaction.date).toLocaleDateString("fr-FR", {
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+        });
+
+        labels.push(transactionDate); // Ajouter la date du jour dans les labels
+        soldeCumulatif += transaction.montant; // Ajouter le montant de la transaction au solde cumulé
+        data.push(soldeCumulatif); // Ajouter le solde cumulé à la liste des données
+    });
+
+    return { labels, data };
+}
+
+// Initialisation des données pour le mois courant
+const { labels, data } = getMonthlyTransactions(currentDate);
+
+// Configuration initiale du graphique
+const myChart = new Chart(ctx, {
+    type: "line",
+    data: {
+        labels: labels,
+        datasets: [
+            {
+                label: "Solde",
+                data: data,
+                backgroundColor: "rgba(75, 192, 192, 0.2)",
+                borderColor: "rgba(75, 192, 192, 1)",
+                borderWidth: 1,
+            },
+        ],
+    },
+    options: {
+        responsive: true,
+        interaction: {
+            mode: "index",
+            intersect: false,
+        },
+        scales: {
+            y: {
+                beginAtZero: false,
+                title: {
+                    display: true,
+                    text: "Solde (€)",
+                },
+            },
+        },
+    },
+});
+
+// Fonction pour mettre à jour le graphique
+function updateChart(chart, date) {
+    const { labels, data } = getMonthlyTransactions(date);
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = data;
+    chart.update();
+    updateMonthName(currentDate);
+}
+
+// Navigation entre les mois
+document.getElementById("prevMonth").addEventListener("click", () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    updateChart(myChart, currentDate);
+});
+
+document.getElementById("nextMonth").addEventListener("click", () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    updateChart(myChart, currentDate);
+});
+
+updateMonthName(currentDate);

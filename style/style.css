@@ -106,7 +106,7 @@ main {
 }
 
 #solde {
-  font-size: 30px;
+  font-size: 25px;
 }
 
 .solde-negatif {
@@ -320,4 +320,22 @@ button, input[type="submit"] {
 
 #cancelReset:hover {
   background-color: hsl(0, 0%, 50%);
+}
+
+.month-controls {
+  display: flex;
+  justify-content: center;
+  font-weight: bolder;
+  gap: 10px;
+  align-items: center;
+  font-size: 25px;
+}
+
+#monthContainer {
+  width: 200px;
+  text-align: center;
+}
+
+.month-controls button {
+  scale: 0.8;
 }
