@@ -266,7 +266,7 @@ function displayTransactions() {
                     transactionDiv.classList.add("recurrent");
 
                 const dateParagraph = document.createElement("p");
-                dateParagraph.textContent = `Date : ${formatDate(
+                dateParagraph.textContent = `${formatDate(
                     transactionObj.date
                 )}`;
 
@@ -337,10 +337,19 @@ function displayTransactions() {
                 }
                 transactionDetails.appendChild(soldeParagraph);
 
-                transactionDiv.appendChild(transactionIcon);
-                transactionDiv.appendChild(transactionDetails);
-                transactionDiv.appendChild(buttonModifier);
-                transactionDiv.appendChild(buttonSupprimer);
+                //mettre transaction icon et details dans une nouvelle div et l'ajouter au div de la transaction
+                const transactionContent = document.createElement("div");
+                transactionContent.appendChild(transactionIcon);
+                transactionContent.appendChild(transactionDetails);
+                transactionDiv.appendChild(transactionContent);
+                const transactionButtons = document.createElement("div");
+                transactionButtons.className = "transaction-buttons";
+                transactionButtons.appendChild(buttonSupprimer);
+                transactionButtons.appendChild(buttonModifier);
+                transactionDiv.appendChild(transactionButtons);
+                
+
+                
 
                 // Ajouter le div de la transaction au conteneur des transactions
                 transactionElement.prepend(transactionDiv);
@@ -393,10 +402,19 @@ function displaySolde() {
     const soldeActuel = getSolde();
     const soldeProjete = getProjectedSolde();
 
-    soldeElement.innerHTML = `
-        <p>Solde actuel : ${soldeActuel} €</p>
-        <p>Solde projeté : ${soldeProjete} €</p>
-    `;
+    //creer un element pour chaque solde ajoute la class "solde-negatif" si le solde est negatif
+    const soldeActuelElement = document.createElement("p");
+    if(soldeActuel < 0) soldeActuelElement.className = "solde-negatif";
+    soldeActuelElement.textContent = `Solde actuel : ${soldeActuel} €`;
+
+    const soldeProjeteElement = document.createElement("p");
+    if(soldeProjete < 0) soldeProjeteElement.className = "solde-negatif";
+    soldeProjeteElement.textContent = `Solde projeté : ${soldeProjete} €`;
+
+    soldeElement.innerHTML = "";
+    soldeElement.appendChild(soldeActuelElement);
+    soldeElement.appendChild(soldeProjeteElement);
+
 }
 
 document.getElementById("reset-button").addEventListener("click", function () {
