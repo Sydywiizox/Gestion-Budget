@@ -30,11 +30,7 @@ loadTransactions();
 const totalBalanceElement = document.getElementById("total-balance");
 const transactionTableBody = document.getElementById("transaction-table-body");
 // Initialiser le formulaire
-const dateField = document.getElementById("date");
-
-// Initialiser le champ de date avec la date du jour
-const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-dateField.value = today;
+document.getElementById("date").value = moment().format("YYYY-MM-DD");
 updateDisplay();
 document.getElementById("cancel").style.display = "none";
 // Mettre à jour le gestionnaire d'événements pour la soumission du formulaire
@@ -125,8 +121,7 @@ changeSelectColor();
 const resetButton = document.getElementById("reset");
 resetButton.addEventListener("click", (e) => {
     e.preventDefault();
-    const today = new Date().toISOString().split("T")[0];
-    document.getElementById("date").value = today;
+    document.getElementById("date").value = moment().format("YYYY-MM-DD");
     document.getElementById("montant").value = "";
     document.getElementById("description").value = "";
     document.getElementById("type").value = "revenu";
@@ -181,6 +176,22 @@ function updateDisplay() {
 }
 
 function addTransactionToTable(transaction, index, tableBody) {
+    if (
+        (!isTodaySet 
+            &&( transaction.compareTo(
+                transactions.getFirstTransaction(new Date(transaction.date))
+            ) &&
+            moment(transaction.date).format("YYYY-MM-DD") >
+                moment().format("YYYY-MM-DD")))
+    ) {
+        console.log("today " + transaction);
+        isTodaySet = true;
+        const todayRow = document.createElement("tr");
+        todayRow.innerHTML = `
+                <td colspan="6" class="today">Ajourd'hui</td>
+            `;
+        tableBody.prepend(todayRow);
+    }
     const row = document.createElement("tr");
 
     // Ajouter les colonnes
@@ -222,13 +233,20 @@ function addTransactionToTable(transaction, index, tableBody) {
     tableBody.prepend(row);
 
     //si la transaction est aujourd'hui au plus tôt alors créer une row "Ajourd'hui"
-    if (
+    console.log(transaction.date);
+    console.log(moment(transaction.date).format("YYYY-MM-DD"));
+    console.log(moment().format("YYYY-MM-DD"));
+    console.log(
         moment(transaction.date).format("YYYY-MM-DD") >=
+            moment().format("YYYY-MM-DD")
+    );
+    if (
+        (!isTodaySet &&
+        (moment(transaction.date).format("YYYY-MM-DD") ===
             moment().format("YYYY-MM-DD") &&
-        !isTodaySet &&
-        transaction.compareTo(
-            transactions.getLastTransaction(new Date(transaction.date))
-        )
+            transaction.compareTo(
+                transactions.getLastTransaction(new Date(transaction.date))
+            )))
     ) {
         console.log("today " + transaction);
         isTodaySet = true;
@@ -244,14 +262,17 @@ function addTransactionToTable(transaction, index, tableBody) {
         year: "numeric",
     });
     // Ajouter une ligne indiquant le changement de mois si nécessaire
-    if (currentMonth !== previousMonth && transaction.compareTo(
-        transactions.getLastTransactionOfMonth(new Date(transaction.date))
-    )) {
+    if (
+        currentMonth !== previousMonth &&
+        transaction.compareTo(
+            transactions.getLastTransactionOfMonth(new Date(transaction.date))
+        )
+    ) {
         const monthRow = document.createElement("tr");
         monthRow.classList.add("month-row");
         let monthSolde = transactions
-        .soldeMonth(new Date(transaction.date))
-        .toFixed(2)
+            .soldeMonth(new Date(transaction.date))
+            .toFixed(2);
         let negOrPos = monthSolde <= 0 ? "negatif" : "positif";
         monthRow.innerHTML = `
             <td colspan="6" class="month-header">${currentMonth} <span class="${negOrPos}-solde">(solde : ${monthSolde} €)</span></td>
@@ -296,8 +317,7 @@ function editTransaction(index) {
         document.getElementById("montant").value = "";
         document.getElementById("description").value = "";
         document.getElementById("montant").focus();
-        const today = new Date().toISOString().split("T")[0];
-        document.getElementById("date").value = today;
+        document.getElementById("date").value = moment().format("YYYY-MM-DD");
         document.getElementById("type").value = "revenu";
         changeSelectColor();
     });
@@ -305,9 +325,7 @@ function editTransaction(index) {
     const transaction = transactions.transactionList[index];
 
     // Remplir le formulaire avec les valeurs actuelles de la transaction
-    document.getElementById("date").value = transaction.date
-        .toISOString()
-        .split("T")[0];
+    document.getElementById("date").value = moment(transaction.date).format("YYYY-MM-DD");
     document.getElementById("montant").value = Math.abs(transaction.montant); // Forcer en positif pour le champ transaction.montant;
     document.getElementById("description").value = transaction.description;
     document.getElementById("type").value = transaction.type;

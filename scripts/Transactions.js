@@ -183,6 +183,19 @@ export class Transactions {
         }
     }
 
+    getFirstTransaction(date) {
+        //récuper un tableau des transactions d'une date
+        const filteredTransactions = this.transactionList.filter(
+            (transaction) => moment(transaction.date).format("YYYY-MM-DD") === moment(date).format("YYYY-MM-DD")
+        );
+        console.log(filteredTransactions);
+        //si il y a des transactions
+        if (filteredTransactions.length > 0) {
+            //renvoie la derniere transaction
+            return filteredTransactions[0];
+        }
+    }
+
     //getLastTransactionOfMonth
     getLastTransactionOfMonth(date) {
         //récuper un tableau des transactions d'une date
