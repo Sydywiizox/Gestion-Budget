@@ -91,6 +91,10 @@ form button:hover, #recurrent-transaction-button:hover {
     color: #830814;
 }
 
+.positif-solde {
+    color: #0a551b;
+}
+
 .today, .future {
     font-weight: bold;
     text-align: center;
