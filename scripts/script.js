@@ -164,7 +164,7 @@ function updateDisplay() {
     // Calculer le solde projeté
     const projectedBalance = transactions.soldeTotal;
     const plannedBalanceElement = document.getElementById("planned-balance");
-    plannedBalanceElement.textContent = `${projectedBalance.toFixed(2)} €`; // Solde projeté
+    plannedBalanceElement.textContent = `${projectedBalance.toFixed(2)} € (${projectedBalance - currentBalance.toFixed(2)}€)`; // Solde projeté
 
     // Mettre à jour le tableau des transactions
     transactionTableBody.innerHTML = ""; // Réinitialiser le tableau
