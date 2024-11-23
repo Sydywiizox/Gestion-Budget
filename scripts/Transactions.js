@@ -209,4 +209,15 @@ export class Transactions {
             return filteredTransactions[filteredTransactions.length - 1];
         }
     }
+
+    addTransactions(transactions) {
+        transactions.forEach((transaction) => {
+            this.addTransaction(new Transaction(transaction.date, transaction.montant, transaction.description, transaction.type));
+        });
+    }
+
+    replaceTransactions(transactions) {
+        this.transactionList = [];
+        this.addTransactions(transactions);
+    }
 }

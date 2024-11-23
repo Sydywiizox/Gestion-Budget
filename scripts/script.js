@@ -456,3 +456,67 @@ function resetRecurrentForm() {
     document.getElementById("unit").value = "mois";
     document.getElementById("step").value = 1;
 }
+
+document.getElementById("export").addEventListener("click", () => {
+    exportTransactions();
+});
+document.getElementById("import").addEventListener("click", () => {
+    importTransactions();
+});
+
+// Fonction pour exporter les transactions au format JSON
+function exportTransactions() {
+    const transactionsJSON = JSON.stringify(transactions.transactionList, null, 2);
+    const blob = new Blob([transactionsJSON], { type: "text/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "transactions.json";
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// Fonction pour importer des transactions depuis un fichier JSON
+function importTransactions() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.addEventListener("change", () => {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const data = JSON.parse(reader.result);
+                transactions.replaceTransactions(data);
+                updateDisplay();
+                saveTransactions();
+            };
+            reader.readAsText(file);
+        }
+    });
+    input.click();
+}
+
+//fonction pour supprimer toutes les transactions avec une modale de confirmation
+document.getElementById("delete").addEventListener("click", () => {
+    const modal = document.getElementById("confirmation-modal");
+    modal.style.display = "block";
+
+    const confirmButton = document.getElementById("confirmation-delete");
+    confirmButton.addEventListener("click", () => {
+        modal.style.display = "none";
+        transactions.transactionList = [];
+        updateDisplay();
+        saveTransactions();
+    });
+    const cancelButton = document.getElementById("confirmation-cancel");
+    cancelButton.addEventListener("click", () => {
+        modal.style.display = "none";
+    });
+    /* Verifie si on clic hors de la modal */
+    window.addEventListener("click", (event) => {
+        if (event.target === modal) {
+            modal.style.display = "none";
+        }
+    });
+});

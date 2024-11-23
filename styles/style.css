@@ -20,20 +20,56 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 10px;
 }
 
 header img {
     width: 50px;
     height: 50px;
     vertical-align: middle;
-    margin-right: 10px;
 }
 
+header i {
+    font-size: 25px;
+}
+#buttons button {
+    margin: 0;
+}
 h1 {
     display: inline;
     font-size: 2em;
 }
 
+#confirmation-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+#confirmation-modal-content {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    background-color: var(--primary-color);
+    justify-content: center;
+    align-items: center;
+    transform: translate(-50%, -50%);
+    border-radius: 12px;
+    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    text-align: center;
+    color: white;
+}
+#confirmation-modal-content p {
+    font-size: 20px;
+}
 /* Formulaire */
 form {
     display: flex;
@@ -89,17 +125,17 @@ button:hover {
     width: 41px;
 }
 
-#cancel {
+#cancel, #confirmation-cancel {
     background-color: #929292;
 }
-#cancel:hover {
+#cancel:hover, #confirmation-cancel:hover {
     background-color: #767676;
 }
-.delete-btn {
+.delete-btn, #confirmation-delete {
     background-color: #f44336;
 }
 
-.delete-btn:hover {
+.delete-btn:hover, #confirmation-delete:hover {
     background-color: #d32f2f;
 }
 
