@@ -1,3 +1,8 @@
+:root {
+    --primary-color: #9b59b6;
+    --primary-color-hover: #734187;
+    --primary-color-light: #fcf2ff;
+}
 /* Style global */
 body {
     font-family: Arial, sans-serif;
@@ -8,7 +13,7 @@ body {
 }
 
 header {
-    background-color: #9b59b6;
+    background-color: var(--primary-color);
     color: white;
     padding: 1em;
     text-align: center;
@@ -54,7 +59,7 @@ button {
 
 button {
     cursor: pointer;
-    background-color: #9b59b6;
+    background-color: var(--primary-color);
     color: white;
     border: none;
     border-radius: 5px;
@@ -65,7 +70,7 @@ button:disabled {
 }
 
 button:hover {
-    background-color: #734187;
+    background-color: var(--primary-color-hover);
 }
 
 /* Sélection type de transaction */
@@ -139,7 +144,7 @@ td {
 
 th {
     padding: 10px;
-    background-color: #9b59b6;
+    background-color: var(--primary-color);
     text-align: center;
     color: white;
 }
@@ -177,7 +182,7 @@ th {
 }
 
 .month-header {
-    background-color: #fcf2ff;
+    background-color: #var(--primary-color-light);
     font-weight: bold;
     text-align: center;
     text-transform: capitalize;
