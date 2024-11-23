@@ -245,7 +245,7 @@ function addTransactionToTable(transaction, index, tableBody) {
     // Ajouter la ligne au tableau
     tableBody.prepend(row);
 
-    //si la transaction est aujourd'hui au plus tôt alors créer une row "Ajourd'hui"
+    //si la transaction est aujourd'hui au plus tôt alors créer une row "Aujourd'hui"
     console.log(transaction.date);
     console.log(moment(transaction.date).format("YYYY-MM-DD"));
     console.log(moment().format("YYYY-MM-DD"));
@@ -265,7 +265,7 @@ function addTransactionToTable(transaction, index, tableBody) {
         isTodaySet = true;
         const todayRow = document.createElement("tr");
         todayRow.innerHTML = `
-                <td colspan="6" class="today">Ajourd'hui</td>
+                <td colspan="6" class="today">Aujourd'hui</td>
             `;
         tableBody.prepend(todayRow);
     }
