@@ -169,7 +169,7 @@ function updateDisplay() {
     const plannedBalanceElement = document.getElementById("planned-balance");
     negOrPos = projectedBalance.toFixed(2) <= 0 ? "negatif" : "positif";
     let negOrPos2 =
-        (projectedBalance - currentBalance).toFixed(2) <= 0
+        (projectedBalance - currentBalance).toFixed(2) < 0
             ? "negatif"
             : "positif";
     plannedBalanceElement.innerHTML = `<span class="${negOrPos}-solde">${projectedBalance.toFixed(
