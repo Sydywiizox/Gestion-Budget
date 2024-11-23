@@ -2,7 +2,7 @@ import { Transaction } from "./Transaction.js";
 import { Transactions } from "./Transactions.js";
 
 import { TransactionRecurrent } from "./TransactionRecurrent.js";
-
+moment.locale("fr");
 const transactionForm = document.getElementById("transaction-form");
 let previousMonth = null; // Variable pour suivre le mois précédent
 var mois = 1;
@@ -216,12 +216,12 @@ function addTransactionToTable(transaction, index, tableBody) {
         type = "Dépense";
         row.classList.add("depense");
     }
-
+    let iconType = type === "Revenu" ? `<i class="fa-solid fa-arrow-trend-up"></i>` : `<i class="fa-solid fa-arrow-trend-down"></i>`
     row.innerHTML = `
-        <td>${transaction.date.toLocaleDateString("fr-FR")}</td>
+        <td class="type">${iconType}</td>
+        <td>${moment(transaction.date).format('D MMM YYYY')}</td>
         <td class="montant ${transaction.type}">${transaction.montant.toFixed(2)} €</td>
         <td>${transaction.description || ""}</td>
-        <td>${type}</td>
         <td class="solde ${transaction.soldeCumulatif.toFixed(2) > 0 ? "positif" : "negatif"}">${transaction.soldeCumulatif.toFixed(2)} €</td>
         <td>
             <!-- Boutons Edit et Delete -->
@@ -287,8 +287,9 @@ function addTransactionToTable(transaction, index, tableBody) {
             .soldeMonth(new Date(transaction.date))
             .toFixed(2);
         let negOrPos = monthSolde <= 0 ? "negatif" : "positif";
+        let negOrPos2 = transaction.soldeCumulatif.toFixed(2) <= 0 ? "negatif" : "positif";
         monthRow.innerHTML = `
-            <td colspan="6" class="month-header">${currentMonth} <span class="${negOrPos}-solde">(solde : ${monthSolde} €)</span></td>
+            <td colspan="6" class="month-header">${currentMonth} <div><span class="${negOrPos2}-solde">(solde : ${transaction.soldeCumulatif.toFixed(2)} €</span> <span class="${negOrPos}-solde"> / solde mensuel : ${monthSolde} €)</span></div></td>
         `;
         tableBody.prepend(monthRow);
         previousMonth = currentMonth; // Mettre à jour le mois précédent
