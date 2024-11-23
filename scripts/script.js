@@ -1,6 +1,5 @@
 import { Transaction } from "./Transaction.js";
 import { Transactions } from "./Transactions.js";
-
 import { TransactionRecurrent } from "./TransactionRecurrent.js";
 moment.locale("fr");
 const transactionForm = document.getElementById("transaction-form");
@@ -197,7 +196,6 @@ function addTransactionToTable(transaction, index, tableBody) {
         moment(transaction.date).format("YYYY-MM-DD") >
             moment().format("YYYY-MM-DD")
     ) {
-        console.log("today " + transaction);
         isTodaySet = true;
         const todayRow = document.createElement("tr");
         todayRow.innerHTML = `
@@ -246,13 +244,6 @@ function addTransactionToTable(transaction, index, tableBody) {
     tableBody.prepend(row);
 
     //si la transaction est aujourd'hui au plus tôt alors créer une row "Aujourd'hui"
-    console.log(transaction.date);
-    console.log(moment(transaction.date).format("YYYY-MM-DD"));
-    console.log(moment().format("YYYY-MM-DD"));
-    console.log(
-        moment(transaction.date).format("YYYY-MM-DD") >=
-            moment().format("YYYY-MM-DD")
-    );
     if (
         !isTodaySet &&
         moment(transaction.date).format("YYYY-MM-DD") ===
@@ -261,7 +252,6 @@ function addTransactionToTable(transaction, index, tableBody) {
             transactions.getLastTransaction(new Date(transaction.date))
         )
     ) {
-        console.log("today " + transaction);
         isTodaySet = true;
         const todayRow = document.createElement("tr");
         todayRow.innerHTML = `
@@ -299,7 +289,6 @@ function addTransactionToTable(transaction, index, tableBody) {
         isFutureSet == false &&
         transactions.isLastTransaction(transaction)
     ) {
-        console.log(transaction);
         isFutureSet = true;
         const futureRow = document.createElement("tr");
         futureRow.innerHTML = `

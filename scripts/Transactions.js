@@ -175,7 +175,6 @@ export class Transactions {
         const filteredTransactions = this.transactionList.filter(
             (transaction) => moment(transaction.date).format("YYYY-MM-DD") === moment(date).format("YYYY-MM-DD")
         );
-        console.log(filteredTransactions);
         //si il y a des transactions
         if (filteredTransactions.length > 0) {
             //renvoie la derniere transaction
@@ -188,7 +187,6 @@ export class Transactions {
         const filteredTransactions = this.transactionList.filter(
             (transaction) => moment(transaction.date).format("YYYY-MM-DD") === moment(date).format("YYYY-MM-DD")
         );
-        console.log(filteredTransactions);
         //si il y a des transactions
         if (filteredTransactions.length > 0) {
             //renvoie la derniere transaction
@@ -202,7 +200,6 @@ export class Transactions {
         const filteredTransactions = this.transactionList.filter(
             (transaction) => moment(transaction.date).format("YYYY-MM") === moment(date).format("YYYY-MM")
         );
-        console.log(filteredTransactions);
         //si il y a des transactions
         if (filteredTransactions.length > 0) {
             //renvoie la derniere transaction
