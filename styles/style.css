@@ -182,7 +182,7 @@ th {
 }
 
 .month-header {
-    background-color: #var(--primary-color-light);
+    background-color: var(--primary-color-light);
     font-weight: bold;
     text-align: center;
     text-transform: capitalize;
