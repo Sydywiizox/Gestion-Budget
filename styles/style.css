@@ -115,7 +115,8 @@ button:hover {
 
 /* Table */
 table {
-    width: 50vw;
+    width: 90vw;
+    max-width: 1000px;
     margin-block: 20px;
     margin-inline: auto;
     border-collapse: collapse;
@@ -246,3 +247,74 @@ td:nth-child(6) {
     display: block;
 }
 
+/* Responsive Design */
+@media (max-width: 1100px) {
+    td:nth-child(3) {
+        width: 15%;
+    }
+    td:nth-child(5) {
+        width: 15%;
+    }
+}
+@media (max-width: 900px) {
+    #balance-section {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+}
+@media (max-width: 768px) {
+    form {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    input,
+    select,
+    button:not(#recurrent-transaction-button, #recurrent-rese, #reset) {
+        width: 100%;
+    }
+
+    table {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    th,
+    td {
+        padding: 8px;
+    }
+
+    #balance-section {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+}
+@media (max-width: 600px) {
+    #balance-section {
+        font-size: smaller;
+    }
+    table {
+        font-size: smaller;
+    }
+}
+@media (max-width: 480px) {
+    #balance-section {
+        font-size: smaller;
+    }
+    header h1 {
+        font-size: 1.5em;
+    }
+
+    form {
+        padding: 15px;
+    }
+
+    input,
+    select,
+    button {
+        padding: 8px;
+        font-size: 0.9rem;
+    }
+}
