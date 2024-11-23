@@ -289,7 +289,7 @@ function addTransactionToTable(transaction, index, tableBody) {
         let negOrPos = monthSolde <= 0 ? "negatif" : "positif";
         let negOrPos2 = transaction.soldeCumulatif.toFixed(2) <= 0 ? "negatif" : "positif";
         monthRow.innerHTML = `
-            <td colspan="6" class="month-header">${currentMonth} <div><span class="${negOrPos2}-solde">(solde : ${transaction.soldeCumulatif.toFixed(2)} €</span> <span class="${negOrPos}-solde"> / solde mensuel : ${monthSolde} €)</span></div></td>
+            <td colspan="6" class="month-header">${currentMonth} <div>(<span class="${negOrPos2}-solde">solde : ${transaction.soldeCumulatif.toFixed(2)} €</span> / <span class="${negOrPos}-solde"> solde mensuel : ${monthSolde} €</span>)</div></td>
         `;
         tableBody.prepend(monthRow);
         previousMonth = currentMonth; // Mettre à jour le mois précédent
