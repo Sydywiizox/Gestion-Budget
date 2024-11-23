@@ -159,12 +159,25 @@ function updateDisplay() {
     transactions.calculateCumulativeBalances();
     // Calculer le solde actuel
     const currentBalance = transactions.soldeCurrent;
-    totalBalanceElement.textContent = `${currentBalance.toFixed(2)} €`; // Solde actuel
+    let negOrPos = currentBalance.toFixed(2) <= 0 ? "negatif" : "positif";
+    totalBalanceElement.innerHTML = `<span class="${negOrPos}-solde">${currentBalance.toFixed(
+        2
+    )} €</span>`; // Solde actuel
 
     // Calculer le solde projeté
     const projectedBalance = transactions.soldeTotal;
     const plannedBalanceElement = document.getElementById("planned-balance");
-    plannedBalanceElement.textContent = `${projectedBalance.toFixed(2)} € (${projectedBalance - currentBalance.toFixed(2)}€)`; // Solde projeté
+    negOrPos = projectedBalance.toFixed(2) <= 0 ? "negatif" : "positif";
+    let negOrPos2 =
+        (projectedBalance - currentBalance).toFixed(2) <= 0
+            ? "negatif"
+            : "positif";
+    plannedBalanceElement.innerHTML = `<span class="${negOrPos}-solde">${projectedBalance.toFixed(
+        2
+    )} €</span> <span class="${negOrPos2}-solde">(${(
+        projectedBalance - currentBalance
+    ).toFixed(2)} €)</span>`;
+    // Solde projeté
 
     // Mettre à jour le tableau des transactions
     transactionTableBody.innerHTML = ""; // Réinitialiser le tableau
@@ -177,18 +190,18 @@ function updateDisplay() {
 
 function addTransactionToTable(transaction, index, tableBody) {
     if (
-        (!isTodaySet 
-            &&( transaction.compareTo(
-                transactions.getFirstTransaction(new Date(transaction.date))
-            ) &&
-            moment(transaction.date).format("YYYY-MM-DD") >
-                moment().format("YYYY-MM-DD")))
+        !isTodaySet &&
+        transaction.compareTo(
+            transactions.getFirstTransaction(new Date(transaction.date))
+        ) &&
+        moment(transaction.date).format("YYYY-MM-DD") >
+            moment().format("YYYY-MM-DD")
     ) {
         console.log("today " + transaction);
         isTodaySet = true;
         const todayRow = document.createElement("tr");
         todayRow.innerHTML = `
-                <td colspan="6" class="today">Ajourd'hui</td>
+                <td colspan="6" class="today">Aujourd'hui</td>
             `;
         tableBody.prepend(todayRow);
     }
@@ -206,10 +219,10 @@ function addTransactionToTable(transaction, index, tableBody) {
 
     row.innerHTML = `
         <td>${transaction.date.toLocaleDateString("fr-FR")}</td>
-        <td>${transaction.montant.toFixed(2)} €</td>
+        <td class="montant ${transaction.type}">${transaction.montant.toFixed(2)} €</td>
         <td>${transaction.description || ""}</td>
         <td>${type}</td>
-        <td>${transaction.soldeCumulatif.toFixed(2)} €</td>
+        <td class="solde ${transaction.soldeCumulatif.toFixed(2) > 0 ? "positif" : "negatif"}">${transaction.soldeCumulatif.toFixed(2)} €</td>
         <td>
             <!-- Boutons Edit et Delete -->
             <div class="actions">
@@ -241,12 +254,12 @@ function addTransactionToTable(transaction, index, tableBody) {
             moment().format("YYYY-MM-DD")
     );
     if (
-        (!isTodaySet &&
-        (moment(transaction.date).format("YYYY-MM-DD") ===
+        !isTodaySet &&
+        moment(transaction.date).format("YYYY-MM-DD") ===
             moment().format("YYYY-MM-DD") &&
-            transaction.compareTo(
-                transactions.getLastTransaction(new Date(transaction.date))
-            )))
+        transaction.compareTo(
+            transactions.getLastTransaction(new Date(transaction.date))
+        )
     ) {
         console.log("today " + transaction);
         isTodaySet = true;
@@ -289,7 +302,7 @@ function addTransactionToTable(transaction, index, tableBody) {
         isFutureSet = true;
         const futureRow = document.createElement("tr");
         futureRow.innerHTML = `
-            <td colspan="6" class="future">A venir</td>
+            <td colspan="6" class="future">à venir</td>
         `;
         tableBody.prepend(futureRow);
     }
@@ -325,7 +338,9 @@ function editTransaction(index) {
     const transaction = transactions.transactionList[index];
 
     // Remplir le formulaire avec les valeurs actuelles de la transaction
-    document.getElementById("date").value = moment(transaction.date).format("YYYY-MM-DD");
+    document.getElementById("date").value = moment(transaction.date).format(
+        "YYYY-MM-DD"
+    );
     document.getElementById("montant").value = Math.abs(transaction.montant); // Forcer en positif pour le champ transaction.montant;
     document.getElementById("description").value = transaction.description;
     document.getElementById("type").value = transaction.type;
