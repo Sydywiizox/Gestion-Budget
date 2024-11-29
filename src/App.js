@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import moment from "moment";
 import 'moment/locale/fr';  // Import de la locale française
 import { Chart } from 'chart.js/auto'; // Import de Chart.js
+import { auth, saveTransaction, deleteTransaction, updateTransaction, getAllTransactions } from './firebase';
+import Auth from './components/Auth';
 
 // Configurer Moment.js pour utiliser le français
 moment.locale('fr');
@@ -29,21 +31,35 @@ const App = () => {
     const chartRef = useRef(null);
     const chartInstance = useRef(null);
     const [hoveredTransactionId, setHoveredTransactionId] = useState(null);
+    const [user, setUser] = useState(null);
+    const [editTransaction, setEditTransaction] = useState(null);
 
-    // Charger les transactions depuis le localStorage lors du montage du composant
+    // Charger les transactions depuis Firestore lors de la connexion
     useEffect(() => {
-        const savedTransactions = JSON.parse(
-            localStorage.getItem("transactions")
-        );
-        if (savedTransactions) {
-            setTransactions(savedTransactions);
-            updateCumulativeBalances(savedTransactions);
-        }
+        const unsubscribe = auth.onAuthStateChanged(async (user) => {
+            setUser(user);
+            if (user) {
+                const { transactions, error } = await getAllTransactions(user.uid);
+                if (!error && transactions) {
+                    setTransactions(transactions);
+                    updateCumulativeBalances(transactions);
+                }
+            }
+        });
+
+        return () => unsubscribe();
     }, []);
+
+    // Sauvegarder les transactions pour l'utilisateur connecté
+    useEffect(() => {
+        if (user && transactions.length > 0) {
+            //saveTransaction(user.uid, transactions);
+        }
+    }, [transactions, user]);
 
     // Sauvegarder les transactions dans le localStorage à chaque mise à jour
     useEffect(() => {
-        localStorage.setItem("transactions", JSON.stringify(transactions));
+        //localStorage.setItem("transactions", JSON.stringify(transactions));
     }, [transactions]);
 
     // Gérer le dark mode
@@ -116,7 +132,7 @@ const App = () => {
     };
 
     // Ajouter une transaction
-    const addTransaction = (e) => {
+    const addTransaction = async (e) => {
         e.preventDefault();
 
         const newTransaction = {
@@ -140,8 +156,8 @@ const App = () => {
             updatedTransactions = [...recurrentTransactions];
         }
 
-        // Ajoutez la nouvelle transaction et les récurrentes sans doublon
-        setTransactions([...updatedTransactions, ...transactions]);
+        // Sauvegarder la nouvelle transaction dans Firestore
+        await handleAddTransaction(newTransaction);
 
         // Réinitialiser le formulaire après l'ajout
         setFormData({
@@ -152,13 +168,25 @@ const App = () => {
             recurrenceStep: "1",
             recurrenceEndDate: moment().add(1, "year").format("YYYY-MM-DD"),
         });
-
-        // Mettre à jour les soldes cumulatifs
-        updateCumulativeBalances([...updatedTransactions, ...transactions]);
     };
 
-    // Ajouter un état pour gérer la transaction à modifier
-    const [editTransaction, setEditTransaction] = useState(null);
+    // Sauvegarder une transaction dans Firestore
+    const handleAddTransaction = async (newTransaction) => {
+        if (!user) return;
+
+        const transactionWithId = {
+            ...newTransaction,
+            id: Date.now().toString(),
+        };
+
+        const { error } = await saveTransaction(user.uid, transactionWithId);
+        if (!error) {
+            const updatedTransactions = [...transactions, transactionWithId];
+            setTransactions(updatedTransactions);
+            updateCumulativeBalances(updatedTransactions);
+            setShowModal(false);
+        }
+    };
 
     // Fonction pour démarrer la modification
     const startEditing = (transaction) => {
@@ -187,8 +215,31 @@ const App = () => {
         console.log("Scrolling to top...");
     };
 
+    // Modifier une transaction dans Firestore
+    const handleEditTransaction = async (editedTransaction) => {
+        if (!user) return;
+
+        const { error } = await updateTransaction(user.uid, editedTransaction);
+        if (!error) {
+            const updatedTransactions = transactions.map(t =>
+                t.id === editedTransaction.id ? editedTransaction : t
+            );
+            setTransactions(updatedTransactions);
+            updateCumulativeBalances(updatedTransactions);
+            setEditTransaction(null); // Réinitialiser le mode d'édition
+            setFormData({
+                date: moment().format("YYYY-MM-DD"),
+                montant: "",
+                description: "",
+                recurrence: "none",
+                recurrenceStep: "1",
+                recurrenceEndDate: moment().add(1, "year").format("YYYY-MM-DD"),
+            });
+        }
+    };
+
     // Sauvegarder les modifications
-    const saveChanges = (e) => {
+    const saveChanges = async (e) => {
         e.preventDefault();
         
         // Supprimer l'ancienne transaction
@@ -196,7 +247,7 @@ const App = () => {
 
         // Créer la nouvelle transaction avec les modifications
         const newTransaction = {
-            id: Date.now(),
+            id: editTransaction.id,
             date: formData.date,
             montant: formData.montant,
             description: formData.description,
@@ -216,7 +267,9 @@ const App = () => {
             finalTransactions.push(newTransaction);
         }
 
-        setTransactions(finalTransactions);
+        // Sauvegarder la transaction modifiée dans Firestore
+        await handleEditTransaction(newTransaction);
+
         setEditTransaction(null); // Réinitialiser le mode d'édition
         setFormData({
             date: moment().format("YYYY-MM-DD"),
@@ -226,18 +279,33 @@ const App = () => {
             recurrenceStep: "1",
             recurrenceEndDate: moment().add(1, "year").format("YYYY-MM-DD"),
         });
-        updateCumulativeBalances(finalTransactions);
+    };
+
+    // Supprimer une transaction de Firestore
+    const handleDeleteTransaction = async (id) => {
+        if (!user) return;
+
+        const { error } = await deleteTransaction(user.uid, id);
+        if (!error) {
+            const updatedTransactions = transactions.filter(t => t.id !== id);
+            setTransactions(updatedTransactions);
+            updateCumulativeBalances(updatedTransactions);
+        }
     };
 
     // Supprimer une transaction
     const deleteTransaction = (id) => {
-        const updatedTransactions = transactions.filter((t) => t.id !== id);
-        setTransactions(updatedTransactions);
-        updateCumulativeBalances(updatedTransactions);
+        handleDeleteTransaction(id);
     };
 
     // Supprimer toutes les transactions
-    const deleteAllTransactions = () => {
+    const deleteAllTransactions = async () => {
+        if (!user) return;
+
+        for (const transaction of transactions) {
+            await handleDeleteTransaction(transaction.id);
+        }
+
         setTransactions([]);
         setTotalBalance(0);
         setFutureBalance(0);
@@ -245,28 +313,24 @@ const App = () => {
     };
 
     // Fonction pour supprimer les transactions filtrées
-    const deleteFilteredTransactions = () => {
+    const deleteFilteredTransactions = async () => {
         const filteredIds = filterTransactionsByMonth(transactions).map(t => t.id);
-        setTransactions(prevTransactions => {
-            const newTransactions = prevTransactions.filter(t => !filteredIds.includes(t.id));
-            // Mise à jour des soldes
-            updateCumulativeBalances(newTransactions);
-            return newTransactions;
-        });
+        for (const id of filteredIds) {
+            await handleDeleteTransaction(id);
+        }
         // Réinitialisation des filtres
         setSelectedMonth('all');
         setSelectedYear('all');
     };
 
     // Fonction pour supprimer les transactions non filtrées
-    const deleteNonFilteredTransactions = () => {
+    const deleteNonFilteredTransactions = async () => {
         const filteredIds = filterTransactionsByMonth(transactions).map(t => t.id);
-        setTransactions(prevTransactions => {
-            const newTransactions = prevTransactions.filter(t => filteredIds.includes(t.id));
-            // Mise à jour des soldes
-            updateCumulativeBalances(newTransactions);
-            return newTransactions;
-        });
+        for (const id of transactions) {
+            if (!filteredIds.includes(id.id)) {
+                await handleDeleteTransaction(id.id);
+            }
+        }
         // Réinitialisation des filtres
         setSelectedMonth('all');
         setSelectedYear('all');
@@ -648,25 +712,44 @@ const App = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    const handleAuthSuccess = (user) => {
+        setUser(user);
+    };
+
+    if (!user) {
+        return <Auth onAuthSuccess={handleAuthSuccess} />;
+    }
+
     return (
         <div className={`min-h-screen p-4 md:p-8 transition-colors duration-200 ${darkMode ? 'dark bg-gray-900' : 'bg-gradient-to-b from-gray-50 to-gray-100'}`}>
-            {/* Bouton Dark Mode fixe (visible uniquement quand le sticky header est caché) */}
-            <div className={`fixed top-4 right-4 z-50 transition-opacity duration-300 ${showStickyHeader ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                <button
-                    onClick={() => setDarkMode(!darkMode)}
-                    className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
-                    aria-label="Toggle Dark Mode"
-                >
-                    {darkMode ? (
-                        <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                    ) : (
-                        <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                    )}
-                </button>
+            {/* Boutons Dark Mode et Déconnexion fixes (visibles uniquement quand le sticky header est caché) */}
+            <div className={`fixed bg-white dark:bg-gray-800 shadow-lg px-4 py-2 rounded-full top-4 right-4 z-50 transition-opacity duration-300 ${showStickyHeader ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                <div className="flex items-center space-x-4">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {user.email}
+                    </span>
+                    <button
+                        onClick={() => auth.signOut()}
+                        className="px-3 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200"
+                    >
+                        Déconnexion
+                    </button>
+                    <button
+                        onClick={() => setDarkMode(!darkMode)}
+                        className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
+                        aria-label="Toggle Dark Mode"
+                    >
+                        {darkMode ? (
+                            <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        ) : (
+                            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* Header sticky */}
@@ -690,7 +773,18 @@ const App = () => {
                                     ({montantFormate(futureBalance)})
                                 </span>
                             </div>
-                            {/* Bouton Dark Mode dans le header */}
+
+                            <div className="flex items-center space-x-4">
+                                <span className="text-sm text-gray-700 dark:text-gray-300">
+                                    {user.email}
+                                </span>
+                                <button
+                                    onClick={() => auth.signOut()}
+                                    className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200"
+                                >
+                                    Déconnexion
+                                </button>
+                                                            {/* Bouton Dark Mode dans le header */}
                             <button
                                 onClick={() => setDarkMode(!darkMode)}
                                 className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
@@ -706,6 +800,7 @@ const App = () => {
                                     </svg>
                                 )}
                             </button>
+                            </div>
                         </div>
                     </div>
                 </div>
