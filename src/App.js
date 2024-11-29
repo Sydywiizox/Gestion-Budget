@@ -33,6 +33,8 @@ const App = () => {
     const [hoveredTransactionId, setHoveredTransactionId] = useState(null);
     const [user, setUser] = useState(null);
     const [editTransaction, setEditTransaction] = useState(null);
+    const [showDeleteFilteredModal, setShowDeleteFilteredModal] = useState(false);
+    const [showDeleteNonFilteredModal, setShowDeleteNonFilteredModal] = useState(false);
 
     // Charger les transactions depuis Firestore lors de la connexion
     useEffect(() => {
@@ -89,43 +91,65 @@ const App = () => {
     // Générer les transactions récurrentes
     const generateRecurrentTransactions = (transaction) => {
         const recurrentTransactions = [];
-        let step = 1;
         const startDate = moment(transaction.date);
         let currentDate = moment(transaction.date);
         const endDate = moment(transaction.recurrenceEndDate);
+        const step = parseInt(transaction.recurrenceStep) || 1;
+        const originalDay = startDate.date();
 
-        while (currentDate.isBefore(endDate) || currentDate.isSame(endDate)) {
-            const newTransaction = {
-                ...transaction,
-                id: Date.now() + Math.random(), // Générer un ID unique
-                date: currentDate.format("YYYY-MM-DD"),
-            };
-            recurrentTransactions.push(newTransaction);
+        // S'assurer que le montant est un nombre correctement formaté
+        const montant = transaction.montant.toString().replace(',', '.');
 
-            // Gérer les récurrences
-            if (transaction.recurrence === "day") {
-                currentDate = moment(startDate).add(transaction.recurrenceStep*step, "days");
-            } else if (transaction.recurrence === "month") {
-                currentDate = moment(startDate).add(transaction.recurrenceStep*step, "months");
-                console.log(startDate)
-                console.log(step)
-                console.log(currentDate)
-
-                // Ajuster les dates pour les mois ayant moins de jours
-                if (currentDate.date() > currentDate.daysInMonth()) {
-                    currentDate.date(currentDate.daysInMonth());
-                }
-                console.log(currentDate)
-            } else if (transaction.recurrence === "year") {
-                currentDate = moment(startDate).add(transaction.recurrenceStep*step, "years");
-
-                // Ajuster pour les années bissextiles (février 29)
-                if (currentDate.date() > currentDate.daysInMonth()) {
-                    currentDate.date(currentDate.daysInMonth());
-                }
-                console.log(currentDate)
+        // Générer les transactions
+        while (currentDate.isSameOrBefore(endDate)) {
+            // Créer une copie de la date courante
+            let transactionDate = currentDate.clone();
+            
+            // Ajuster le jour du mois si nécessaire
+            const lastDayOfMonth = transactionDate.daysInMonth();
+            if (originalDay > lastDayOfMonth) {
+                transactionDate.date(lastDayOfMonth);
+            } else {
+                transactionDate.date(originalDay);
             }
-            step++;
+
+            // Ajouter la transaction
+            recurrentTransactions.push({
+                ...transaction,
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                date: transactionDate.format("YYYY-MM-DD"),
+                montant: montant,
+                isRecurrent: true
+            });
+
+            // Avancer à la prochaine date selon le type de récurrence
+            switch (transaction.recurrence) {
+                case "day":
+                    currentDate.add(step, "days");
+                    break;
+                case "month":
+                    currentDate.add(step, "months");
+                    // Ajuster le jour après l'ajout des mois
+                    const lastDay = currentDate.daysInMonth();
+                    if (originalDay > lastDay) {
+                        currentDate.date(lastDay);
+                    } else {
+                        currentDate.date(originalDay);
+                    }
+                    break;
+                case "year":
+                    currentDate.add(step, "years");
+                    // Ajuster pour les années bissextiles
+                    const lastDayOfYear = currentDate.daysInMonth();
+                    if (originalDay > lastDayOfYear) {
+                        currentDate.date(lastDayOfYear);
+                    } else {
+                        currentDate.date(originalDay);
+                    }
+                    break;
+                default:
+                    currentDate.add(step, "months"); // Par défaut, traiter comme mensuel
+            }
         }
 
         return recurrentTransactions;
@@ -135,57 +159,67 @@ const App = () => {
     const addTransaction = async (e) => {
         e.preventDefault();
 
-        const newTransaction = {
-            id: Date.now(),
+        const baseTransaction = {
+            id: Date.now().toString(),
             date: formData.date,
-            montant: formData.montant,
+            montant: formData.montant.toString().replace(',', '.'),
             description: formData.description,
             recurrence: formData.recurrence,
             recurrenceStep: formData.recurrenceStep,
             recurrenceEndDate: formData.recurrenceEndDate,
         };
 
-        // Ajoutez uniquement la transaction d'origine, sans doublon
-        let updatedTransactions = [newTransaction];
+        try {
+            if (formData.recurrence !== "none") {
+                // Générer les transactions récurrentes
+                const recurrentTransactions = generateRecurrentTransactions(baseTransaction);
+                
+                // Sauvegarder chaque transaction récurrente
+                for (const transaction of recurrentTransactions) {
+                    await handleAddTransaction({
+                        ...transaction,
+                        montant: transaction.montant.toString().replace(',', '.')
+                    });
+                }
+            } else {
+                // Sauvegarder uniquement la transaction de base
+                await handleAddTransaction(baseTransaction);
+            }
 
-        if (formData.recurrence !== "none") {
-            // Générer les transactions récurrentes
-            const recurrentTransactions =
-                generateRecurrentTransactions(newTransaction);
-            // Ajoutez uniquement les transactions récurrentes, sans ajouter la transaction initiale
-            updatedTransactions = [...recurrentTransactions];
+            // Réinitialiser le formulaire après l'ajout
+            setFormData({
+                date: moment().format("YYYY-MM-DD"),
+                montant: "",
+                description: "",
+                recurrence: "none",
+                recurrenceStep: "1",
+                recurrenceEndDate: moment().add(1, "year").format("YYYY-MM-DD"),
+            });
+        } catch (error) {
+            console.error('Erreur lors de l\'ajout des transactions:', error);
         }
-
-        // Sauvegarder la nouvelle transaction dans Firestore
-        await handleAddTransaction(newTransaction);
-
-        // Réinitialiser le formulaire après l'ajout
-        setFormData({
-            date: moment().format("YYYY-MM-DD"),
-            montant: "",
-            description: "",
-            recurrence: "none",
-            recurrenceStep: "1",
-            recurrenceEndDate: moment().add(1, "year").format("YYYY-MM-DD"),
-        });
     };
 
     // Sauvegarder une transaction dans Firestore
     const handleAddTransaction = async (newTransaction) => {
         if (!user) return;
 
-        const transactionWithId = {
+        // S'assurer que le montant est un nombre correctement formaté
+        const formattedTransaction = {
             ...newTransaction,
-            id: Date.now().toString(),
+            montant: newTransaction.montant.toString().replace(',', '.')
         };
 
-        const { error } = await saveTransaction(user.uid, transactionWithId);
+        const { error } = await saveTransaction(user.uid, formattedTransaction);
         if (!error) {
-            const updatedTransactions = [...transactions, transactionWithId];
-            setTransactions(updatedTransactions);
-            updateCumulativeBalances(updatedTransactions);
+            setTransactions(prev => {
+                const updated = [...prev, formattedTransaction];
+                updateCumulativeBalances(updated);
+                return updated;
+            });
             setShowModal(false);
         }
+        return { error };
     };
 
     // Fonction pour démarrer la modification
@@ -249,7 +283,7 @@ const App = () => {
         const newTransaction = {
             id: editTransaction.id,
             date: formData.date,
-            montant: formData.montant,
+            montant: formData.montant.toString().replace(',', '.'),
             description: formData.description,
             recurrence: formData.recurrence,
             recurrenceStep: formData.recurrenceStep,
@@ -285,16 +319,25 @@ const App = () => {
     const handleDeleteTransaction = async (id) => {
         if (!user) return;
 
-        const { error } = await deleteTransaction(user.uid, id);
-        if (!error) {
+        try {
+            console.log('Tentative de suppression de la transaction:', id);
+            const { error } = await deleteTransaction(user.uid, id);
+            if (error) {
+                console.error('Erreur lors de la suppression:', error);
+                return;
+            }
+
+            console.log('Transaction supprimée avec succès');
             const updatedTransactions = transactions.filter(t => t.id !== id);
             setTransactions(updatedTransactions);
             updateCumulativeBalances(updatedTransactions);
+        } catch (error) {
+            console.error('Erreur lors de la suppression:', error);
         }
     };
 
-    // Supprimer une transaction
-    const deleteTransaction = (id) => {
+    // Supprimer une transaction (fonction appelée par le bouton)
+    const removeTransaction = (id) => {
         handleDeleteTransaction(id);
     };
 
@@ -302,42 +345,84 @@ const App = () => {
     const deleteAllTransactions = async () => {
         if (!user) return;
 
-        for (const transaction of transactions) {
-            await handleDeleteTransaction(transaction.id);
+        try {
+            for (const transaction of transactions) {
+                await handleDeleteTransaction(transaction.id);
+            }
+            setTransactions([]);
+            setTotalBalance(0);
+            setFutureBalance(0);
+            updateCumulativeBalances([]);
+            setShowModal(false); // Fermer la modale
+        } catch (error) {
+            console.error('Erreur lors de la suppression de toutes les transactions:', error);
         }
-
-        setTransactions([]);
-        setTotalBalance(0);
-        setFutureBalance(0);
-        setShowModal(false);
     };
 
     // Fonction pour supprimer les transactions filtrées
     const deleteFilteredTransactions = async () => {
-        const filteredIds = filterTransactionsByMonth(transactions).map(t => t.id);
-        for (const id of filteredIds) {
-            await handleDeleteTransaction(id);
+        if (!user) return;
+
+        try {
+            const filteredTransactions = filterTransactionsByMonth(transactions);
+            console.log('Transactions filtrées à supprimer:', filteredTransactions);
+
+            for (const transaction of filteredTransactions) {
+                await handleDeleteTransaction(transaction.id);
+            }
+
+            // Mise à jour des états
+            const remainingTransactions = transactions.filter(t => 
+                !filteredTransactions.some(ft => ft.id === t.id)
+            );
+            setTransactions(remainingTransactions);
+            updateCumulativeBalances(remainingTransactions);
+            
+            // Réinitialisation des filtres
+            setSelectedMonth('all');
+            setSelectedYear('all');
+            setShowModal(false);
+        } catch (error) {
+            console.error('Erreur lors de la suppression des transactions filtrées:', error);
         }
-        // Réinitialisation des filtres
-        setSelectedMonth('all');
-        setSelectedYear('all');
     };
 
     // Fonction pour supprimer les transactions non filtrées
     const deleteNonFilteredTransactions = async () => {
-        const filteredIds = filterTransactionsByMonth(transactions).map(t => t.id);
-        for (const id of transactions) {
-            if (!filteredIds.includes(id.id)) {
-                await handleDeleteTransaction(id.id);
+        if (!user) return;
+
+        try {
+            const filteredTransactions = filterTransactionsByMonth(transactions);
+            const nonFilteredTransactions = transactions.filter(t => 
+                !filteredTransactions.some(ft => ft.id === t.id)
+            );
+            console.log('Transactions non filtrées à supprimer:', nonFilteredTransactions);
+            
+            for (const transaction of nonFilteredTransactions) {
+                await handleDeleteTransaction(transaction.id);
             }
+
+            // Mise à jour des états
+            setTransactions(filteredTransactions);
+            updateCumulativeBalances(filteredTransactions);
+            
+            // Réinitialisation des filtres
+            setSelectedMonth('all');
+            setSelectedYear('all');
+            setShowModal(false);
+        } catch (error) {
+            console.error('Erreur lors de la suppression des transactions non filtrées:', error);
         }
-        // Réinitialisation des filtres
-        setSelectedMonth('all');
-        setSelectedYear('all');
     };
 
     // Mettre à jour les soldes cumulatifs
     const updateCumulativeBalances = (transactions) => {
+        if (!transactions || transactions.length === 0) {
+            setTotalBalance(0);
+            setFutureBalance(0);
+            return;
+        }
+
         let total = 0;
         let future = 0;
         const today = moment().format("YYYY-MM-DD");
@@ -354,7 +439,13 @@ const App = () => {
 
         // Calculer les soldes cumulatifs
         const updatedTransactions = sortedTransactions.map((transaction) => {
-            const amount = parseFloat(transaction.montant);
+            // S'assurer que le montant est correctement formaté
+            const amount = parseFloat(transaction.montant.toString().replace(',', '.'));
+            if (isNaN(amount)) {
+                console.error('Montant invalide:', transaction.montant);
+                return transaction;
+            }
+
             total += amount;
             
             if (moment(transaction.date).isAfter(today)) {
@@ -363,7 +454,7 @@ const App = () => {
 
             return {
                 ...transaction,
-                solde: total,
+                solde: parseFloat(total.toFixed(2)),
             };
         });
 
@@ -377,8 +468,8 @@ const App = () => {
         }));
 
         setTransactions(finalTransactions);
-        setTotalBalance(total);
-        setFutureBalance(future);
+        setTotalBalance(parseFloat(total.toFixed(2)));
+        setFutureBalance(parseFloat(future.toFixed(2)));
     };
 
     // Fonction pour calculer le solde cumulé jusqu'à un mois donné
@@ -466,45 +557,50 @@ const App = () => {
         moment(a.date).isAfter(b.date) ? -1 : 1
     );
 
-    // Fonction pour regrouper les transactions par mois
+    // Regrouper les transactions par mois
     const groupTransactionsByMonth = useCallback((filteredTransactions) => {
-        const groups = filteredTransactions.reduce((groups, transaction) => {
+        const groups = {};
+        let currentBalance = 0;
+
+        // Trier les transactions par date et ID (croissant)
+        const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+            const dateComparison = moment(a.date).diff(moment(b.date));
+            if (dateComparison === 0) {
+                return a.id - b.id;
+            }
+            return dateComparison;
+        });
+
+        // Calculer les soldes cumulatifs
+        sortedTransactions.forEach((transaction) => {
             const month = moment(transaction.date).format('YYYY-MM');
-            
+            const amount = parseFloat(transaction.montant.toString().replace(',', '.'));
+
             if (!groups[month]) {
                 groups[month] = {
-                    month,
                     transactions: [],
                     monthlyBalance: 0,
-                    initBalance: 0
+                    initBalance: currentBalance,
+                    endBalance: currentBalance // Ajout du solde de fin
                 };
             }
-            groups[month].transactions.push(transaction);
-            groups[month].monthlyBalance += parseFloat(transaction.montant);
-            
-            // Calculer le solde initial pour ce mois
-            const transactionDate = moment(transaction.date);
-            groups[month].initBalance = calculateBalanceAtDate(transactionDate.endOf('month'));
-            
-            return groups;
-        }, {});
 
-        // Trier les transactions de chaque mois pour l'affichage (ordre inverse)
-        Object.values(groups).forEach(group => {
-            group.transactions.sort((a, b) => {
-                const dateA = moment(a.date);
-                const dateB = moment(b.date);
-                if (dateA.isSame(dateB, 'day')) {
-                    // Pour le même jour, inverser l'ordre des ID
-                    return b.id - a.id;
-                }
-                // Du plus récent au plus ancien
-                return dateB.diff(dateA);
+            currentBalance += amount;
+            groups[month].transactions.push({
+                ...transaction,
+                solde: parseFloat(currentBalance.toFixed(2))
             });
+            groups[month].monthlyBalance += amount;
+            groups[month].endBalance = currentBalance; // Mise à jour du solde de fin
+        });
+
+        // Inverser l'ordre des transactions dans chaque mois
+        Object.values(groups).forEach(group => {
+            group.transactions.reverse();
         });
 
         return groups;
-    }, [calculateBalanceAtDate]);
+    }, []);
 
     // Fonction pour obtenir la liste unique des mois disponibles en fonction de l'année sélectionnée
     const getAvailableMonths = () => {
@@ -917,7 +1013,7 @@ const App = () => {
                     {formData.recurrence !== "none" && (
                         <>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Nombre</label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Fréquence (exemple tous les x mois)</label>
                                 <input
                                     type="number"
                                     name="recurrenceStep"
@@ -1015,13 +1111,13 @@ const App = () => {
                 </div>
                 <div className="flex space-x-4">
                     <button
-                        onClick={deleteFilteredTransactions}
+                        onClick={() => setShowDeleteFilteredModal(true)}
                         className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm dark:bg-red-600 dark:hover:bg-red-700"
                     >
                         <span>Supprimer les transactions filtrées</span>
                     </button>
                     <button
-                        onClick={deleteNonFilteredTransactions}
+                        onClick={() => setShowDeleteNonFilteredModal(true)}
                         className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm dark:bg-orange-600 dark:hover:bg-orange-700"
                     >
                         <span>Supprimer les transactions non filtrées</span>
@@ -1042,7 +1138,7 @@ const App = () => {
                                 <div className="text-sm text-gray-600 dark:text-gray-400">
                                     <span className="font-medium">Solde du mois:</span> {montantFormate(data.monthlyBalance)}
                                     <span className="mx-2">|</span>
-                                    <span className="font-medium">Solde:</span> {montantFormate(data.initBalance)}
+                                    <span className="font-medium">Solde:</span> {montantFormate(data.endBalance)}
                                 </div>
                             </div>
                         </div>
@@ -1098,7 +1194,7 @@ const App = () => {
                                                     </svg>
                                                 </button>
                                                 <button
-                                                    onClick={() => deleteTransaction(transaction.id)}
+                                                    onClick={() => removeTransaction(transaction.id)}
                                                     className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-150"
                                                 >
                                                     <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1134,6 +1230,68 @@ const App = () => {
                             </button>
                             <button
                                 onClick={deleteAllTransactions}
+                                className="px-4 py-2 bg-red-500 dark:bg-red-600 text-white rounded-lg hover:bg-red-600 dark:hover:bg-red-700 transition-colors duration-150"
+                            >
+                                Confirmer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modale de suppression des transactions filtrées */}
+            {showDeleteFilteredModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            Confirmer la suppression
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-6">
+                            Êtes-vous sûr de vouloir supprimer toutes les transactions filtrées ? Cette action est irréversible.
+                        </p>
+                        <div className="flex justify-end space-x-4">
+                            <button
+                                onClick={() => setShowDeleteFilteredModal(false)}
+                                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-500 transition-colors duration-150"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={() => {
+                                    deleteFilteredTransactions();
+                                    setShowDeleteFilteredModal(false);
+                                }}
+                                className="px-4 py-2 bg-red-500 dark:bg-red-600 text-white rounded-lg hover:bg-red-600 dark:hover:bg-red-700 transition-colors duration-150"
+                            >
+                                Confirmer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modale de suppression des transactions non filtrées */}
+            {showDeleteNonFilteredModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            Confirmer la suppression
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-6">
+                            Êtes-vous sûr de vouloir supprimer toutes les transactions non filtrées ? Cette action est irréversible.
+                        </p>
+                        <div className="flex justify-end space-x-4">
+                            <button
+                                onClick={() => setShowDeleteNonFilteredModal(false)}
+                                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-500 transition-colors duration-150"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={() => {
+                                    deleteNonFilteredTransactions();
+                                    setShowDeleteNonFilteredModal(false);
+                                }}
                                 className="px-4 py-2 bg-red-500 dark:bg-red-600 text-white rounded-lg hover:bg-red-600 dark:hover:bg-red-700 transition-colors duration-150"
                             >
                                 Confirmer
@@ -1186,20 +1344,23 @@ const App = () => {
 export default App;
 
 function montantFormate(montant) {
-    // Vérification si le montant est négatif
-    const isNegative = montant < 0;
+    if (montant === undefined || montant === null || isNaN(montant)) {
+        console.error('Montant invalide:', montant);
+        return <span className="text-gray-500">0.00€</span>;
+    }
 
-    // Si le montant est négatif, on l'affiche en rouge, sinon en vert
+    // Convertir le montant en nombre si c'est une chaîne
+    const amount = typeof montant === 'string' ? parseFloat(montant.replace(',', '.')) : montant;
+    
+    // Vérifier si la conversion a échoué
+    if (isNaN(amount)) {
+        console.error('Conversion du montant échouée:', montant);
+        return <span className="text-gray-500">0.00€</span>;
+    }
 
     return (
-        <span
-            className={
-                isNegative
-                    ? "text-red-500 font-bold"
-                    : "text-green-500 font-bold"
-            }
-        >
-            {montant}€
+        <span className={amount < 0 ? "text-red-500 font-bold" : "text-green-500 font-bold"}>
+            {amount.toFixed(2)}€
         </span>
     );
 }
