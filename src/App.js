@@ -650,27 +650,62 @@ const App = () => {
 
     return (
         <div className={`min-h-screen p-4 md:p-8 transition-colors duration-200 ${darkMode ? 'dark bg-gray-900' : 'bg-gradient-to-b from-gray-50 to-gray-100'}`}>
+            {/* Bouton Dark Mode fixe (visible uniquement quand le sticky header est caché) */}
+            <div className={`fixed top-4 right-4 z-50 transition-opacity duration-300 ${showStickyHeader ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                <button
+                    onClick={() => setDarkMode(!darkMode)}
+                    className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
+                    aria-label="Toggle Dark Mode"
+                >
+                    {darkMode ? (
+                        <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    ) : (
+                        <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    )}
+                </button>
+            </div>
+
             {/* Header sticky */}
             <div className={`fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 z-50 ${showStickyHeader ? 'translate-y-0' : '-translate-y-full'}`}>
                 <div className="container mx-auto px-4 py-2">
                     <div className="flex justify-between items-center">
                         <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Vue d'ensemble</h2>
-                        <div className="flex space-x-4">
+                        <div className="flex space-x-4 items-center">
                             <div className="text-sm">
-                                <span className="font-medium">Solde actuel:</span>
-                                <span className={`ml-2 ${totalBalance-futureBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <span className="font-medium dark:text-white">Solde actuel:</span>
+                                <span className={`ml-2 ${totalBalance-futureBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                     {montantFormate(totalBalance-futureBalance)}
                                 </span>
                             </div>
                             <div className="text-sm">
-                                <span className="font-medium">Solde futur:</span>
-                                <span className={`ml-2 ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <span className="font-medium dark:text-white">Solde futur:</span>
+                                <span className={`ml-2 ${totalBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                     {montantFormate(totalBalance)} 
                                 </span>
-                                <span className={`ml-2 text-xs ${futureBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <span className={`ml-2 text-xs ${futureBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                     ({montantFormate(futureBalance)})
                                 </span>
                             </div>
+                            {/* Bouton Dark Mode dans le header */}
+                            <button
+                                onClick={() => setDarkMode(!darkMode)}
+                                className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
+                                aria-label="Toggle Dark Mode"
+                            >
+                                {darkMode ? (
+                                    <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                    </svg>
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1049,22 +1084,6 @@ const App = () => {
                     </div>
                 </div>
             )}
-            {/* Bouton Dark Mode */}
-            <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="fixed top-4 right-4 p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 z-50"
-                aria-label="Toggle Dark Mode"
-            >
-                {darkMode ? (
-                    <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                ) : (
-                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                )}
-            </button>
         </div>
     );
 };
