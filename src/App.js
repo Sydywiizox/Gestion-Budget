@@ -96,6 +96,7 @@ const App = () => {
         const endDate = moment(transaction.recurrenceEndDate);
         const step = parseInt(transaction.recurrenceStep) || 1;
         const originalDay = startDate.date();
+        let counter = 0; // Compteur pour les IDs
 
         // S'assurer que le montant est un nombre correctement formaté
         const montant = transaction.montant.toString().replace(',', '.');
@@ -105,27 +106,38 @@ const App = () => {
             // Créer une copie de la date courante
             let transactionDate = currentDate.clone();
             
-            // Ajuster le jour du mois si nécessaire
-            const lastDayOfMonth = transactionDate.daysInMonth();
-            if (originalDay > lastDayOfMonth) {
-                transactionDate.date(lastDayOfMonth);
-            } else {
-                transactionDate.date(originalDay);
+            // Ajuster la date selon le type de récurrence
+            if (transaction.recurrence === "month") {
+                // Ajuster le jour du mois si nécessaire
+                const lastDayOfMonth = transactionDate.daysInMonth();
+                if (originalDay > lastDayOfMonth) {
+                    transactionDate.date(lastDayOfMonth);
+                } else {
+                    transactionDate.date(originalDay);
+                }
             }
+
+            // Créer un ID stable basé sur la date et le compteur
+            const stableId = `${transaction.id}_${transactionDate.format("YYYYMMDD")}_${counter}`;
+            counter++;
 
             // Ajouter la transaction
             recurrentTransactions.push({
                 ...transaction,
-                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                id: stableId,
                 date: transactionDate.format("YYYY-MM-DD"),
                 montant: montant,
-                isRecurrent: true
+                isRecurrent: true,
+                originalTransactionId: transaction.id // Garder une référence à la transaction d'origine
             });
 
             // Avancer à la prochaine date selon le type de récurrence
             switch (transaction.recurrence) {
                 case "day":
                     currentDate.add(step, "days");
+                    break;
+                case "week":
+                    currentDate.add(step * 7, "days");
                     break;
                 case "month":
                     currentDate.add(step, "months");
@@ -148,7 +160,7 @@ const App = () => {
                     }
                     break;
                 default:
-                    currentDate.add(step, "months"); // Par défaut, traiter comme mensuel
+                    currentDate.add(step, "months");
             }
         }
 
@@ -432,7 +444,7 @@ const App = () => {
             const dateComparison = moment(a.date).diff(moment(b.date));
             if (dateComparison === 0) {
                 // Si même date, utiliser l'ID (qui reflète l'ordre d'insertion)
-                return a.id - b.id;
+                return a.id.localeCompare(b.id);
             }
             return dateComparison;
         });
@@ -566,7 +578,8 @@ const App = () => {
         const sortedTransactions = [...filteredTransactions].sort((a, b) => {
             const dateComparison = moment(a.date).diff(moment(b.date));
             if (dateComparison === 0) {
-                return a.id - b.id;
+                // Si même date, utiliser l'ID (qui reflète l'ordre d'insertion)
+                return a.id.localeCompare(b.id);
             }
             return dateComparison;
         });
@@ -633,7 +646,8 @@ const App = () => {
             return transactions.sort((a, b) => {
                 const dateComparison = moment(a.date).diff(moment(b.date));
                 if (dateComparison === 0) {
-                    return a.id - b.id;
+                    // Si même date, utiliser l'ID (qui reflète l'ordre d'insertion)
+                    return a.id.localeCompare(b.id);
                 }
                 return dateComparison;
             });
@@ -652,7 +666,7 @@ const App = () => {
             const dateComparison = moment(a.date).diff(moment(b.date));
             if (dateComparison === 0) {
                 // Si même date, utiliser l'ID (qui reflète l'ordre d'insertion)
-                return a.id - b.id;
+                return a.id.localeCompare(b.id);
             }
             return dateComparison;
         });
@@ -667,7 +681,7 @@ const App = () => {
             const dateComparison = moment(a.date).diff(moment(b.date));
             if (dateComparison === 0) {
                 // Si même date, utiliser l'ID (qui reflète l'ordre d'insertion)
-                return a.id - b.id;
+                return a.id.localeCompare(b.id);
             }
             return dateComparison;
         });
@@ -1006,6 +1020,7 @@ const App = () => {
                         >
                             <option value="none">Aucune</option>
                             <option value="day">Jour</option>
+                            <option value="week">Semaine</option>
                             <option value="month">Mois</option>
                             <option value="year">Année</option>
                         </select>
