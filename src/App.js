@@ -7,6 +7,7 @@ import { Chart } from 'chart.js/auto'; // Import de Chart.js
 moment.locale('fr');
 
 const App = () => {
+    const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
     const [transactions, setTransactions] = useState([]);
     const [selectedMonth, setSelectedMonth] = useState('all'); 
     const [selectedYear, setSelectedYear] = useState('all'); 
@@ -44,6 +45,16 @@ const App = () => {
     useEffect(() => {
         localStorage.setItem("transactions", JSON.stringify(transactions));
     }, [transactions]);
+
+    // Gérer le dark mode
+    useEffect(() => {
+        if (darkMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        localStorage.setItem('darkMode', darkMode);
+    }, [darkMode]);
 
     // Gestion des changements dans le formulaire
     const handleChange = (e) => {
@@ -179,21 +190,31 @@ const App = () => {
     // Sauvegarder les modifications
     const saveChanges = (e) => {
         e.preventDefault();
-        const updatedTransactions = transactions.map((t) =>
-            t.id === editTransaction.id
-                ? {
-                      ...t,
-                      date: formData.date,
-                      montant: formData.montant,
-                      description: formData.description,
-                      recurrence: formData.recurrence,
-                      recurrenceStep: formData.recurrenceStep,
-                      recurrenceEndDate: formData.recurrenceEndDate,
-                  }
-                : t
-        );
+        
+        // Supprimer l'ancienne transaction
+        const updatedTransactions = transactions.filter(t => t.id !== editTransaction.id);
+
+        // Créer la nouvelle transaction avec les modifications
+        const newTransaction = {
+            id: Date.now(),
+            date: formData.date,
+            montant: formData.montant,
+            description: formData.description,
+            recurrence: formData.recurrence,
+            recurrenceStep: formData.recurrenceStep,
+            recurrenceEndDate: formData.recurrenceEndDate,
+        };
 
         let finalTransactions = [...updatedTransactions];
+
+        if (formData.recurrence !== "none") {
+            // Générer les transactions récurrentes
+            const recurrentTransactions = generateRecurrentTransactions(newTransaction);
+            finalTransactions = [...finalTransactions, ...recurrentTransactions];
+        } else {
+            // Si pas de récurrence, ajouter simplement la transaction modifiée
+            finalTransactions.push(newTransaction);
+        }
 
         setTransactions(finalTransactions);
         setEditTransaction(null); // Réinitialiser le mode d'édition
@@ -508,15 +529,21 @@ const App = () => {
 
     // Initialisation du graphique
     useEffect(() => {
-        if (!chartRef.current || !transactions.length) return;
+        // Si pas de contexte de canvas ou pas de transactions, détruire le graphique existant et sortir
+        if (!chartRef.current) return;
 
         const ctx = chartRef.current.getContext('2d');
-        const chartData = prepareChartData();
-
+        
         // Détruire l'instance précédente si elle existe
         if (chartInstance.current) {
             chartInstance.current.destroy();
+            chartInstance.current = null;
         }
+
+        // Si pas de transactions, ne pas créer de nouveau graphique
+        if (!transactions.length) return;
+
+        const chartData = prepareChartData();
 
         // Création initiale du graphique
         chartInstance.current = new Chart(ctx, {
@@ -566,19 +593,20 @@ const App = () => {
         return () => {
             if (chartInstance.current) {
                 chartInstance.current.destroy();
+                chartInstance.current = null;
             }
         };
-    }, [transactions, prepareChartData]); // Dépend maintenant des transactions et de prepareChartData
+    }, [transactions, prepareChartData]);
 
     // Mise à jour des données du graphique uniquement lors des changements pertinents
     useEffect(() => {
-        if (!chartInstance.current) return;
+        if (!chartInstance.current || !transactions.length) return;
 
         const chartData = prepareChartData();
         chartInstance.current.data.labels = chartData.labels;
         chartInstance.current.data.datasets[0].data = chartData.values;
         chartInstance.current.update('none');
-    }, [transactions, selectedMonth, selectedYear]); // Mise à jour uniquement lors des changements de transactions ou de filtres
+    }, [transactions, selectedMonth, selectedYear]);
 
     // Fonction pour calculer les soldes en tenant compte des filtres
     const calculateFilteredBalances = useCallback(() => {
@@ -621,12 +649,12 @@ const App = () => {
     }, []);
 
     return (
-        <div className="bg-gradient-to-b from-gray-50 to-gray-100 min-h-screen p-4 md:p-8">
+        <div className={`min-h-screen p-4 md:p-8 transition-colors duration-200 ${darkMode ? 'dark bg-gray-900' : 'bg-gradient-to-b from-gray-50 to-gray-100'}`}>
             {/* Header sticky */}
-            <div className={`fixed top-0 left-0 right-0 bg-white shadow-lg transform transition-transform duration-300 z-50 ${showStickyHeader ? 'translate-y-0' : '-translate-y-full'}`}>
+            <div className={`fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 z-50 ${showStickyHeader ? 'translate-y-0' : '-translate-y-full'}`}>
                 <div className="container mx-auto px-4 py-2">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-lg font-semibold text-gray-800">Vue d'ensemble</h2>
+                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Vue d'ensemble</h2>
                         <div className="flex space-x-4">
                             <div className="text-sm">
                                 <span className="font-medium">Solde actuel:</span>
@@ -637,7 +665,7 @@ const App = () => {
                             <div className="text-sm">
                                 <span className="font-medium">Solde futur:</span>
                                 <span className={`ml-2 ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {montantFormate(totalBalance)}
+                                    {montantFormate(totalBalance)} 
                                 </span>
                                 <span className={`ml-2 text-xs ${futureBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     ({montantFormate(futureBalance)})
@@ -648,7 +676,7 @@ const App = () => {
                 </div>
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6 text-center">
                 Gestionnaire de budget
             </h1>
 
@@ -656,11 +684,11 @@ const App = () => {
             <div className="mb-8 flex flex-wrap justify-center gap-4">
                 <button
                     onClick={exportToJson}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm"
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm dark:bg-emerald-600 dark:hover:bg-emerald-700"
                 >
                     <span>Exporter en JSON</span>
                 </button>
-                <label className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-2 shadow-sm">
+                <label className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-2 shadow-sm dark:bg-blue-600 dark:hover:bg-blue-700">
                     <span>Importer en JSON</span>
                     <input
                         type="file"
@@ -671,27 +699,27 @@ const App = () => {
                 </label>
                 <button
                     onClick={() => setShowModal(true)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm"
+                    className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm dark:bg-red-600 dark:hover:bg-red-700"
                 >
                     <span>Supprimer toutes les transactions</span>
                 </button>
             </div>
 
             {/* Solde total et solde à venir */}
-            <div className="bg-white rounded-2xl shadow-lg mb-8">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg mb-8">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-8 text-center">Vue d'ensemble</h2>
+                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-8 text-center">Vue d'ensemble</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
-                            <p className="text-sm font-medium text-blue-600 mb-2">Solde actuel</p>
-                            <p className="text-3xl font-bold text-blue-900">{montantFormate(totalBalance - futureBalance)}</p>
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <p className="text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">Solde actuel</p>
+                            <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{montantFormate(totalBalance-futureBalance)}</p>
                         </div>
-                        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
-                            <p className="text-sm font-medium text-emerald-600 mb-2">Solde futur</p>
-                            <p className="text-3xl font-bold text-emerald-900">
+                        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900 dark:to-emerald-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <p className="text-sm font-medium text-emerald-600 dark:text-emerald-300 mb-2">Solde futur</p>
+                            <p className="text-3xl font-bold text-emerald-900 dark:text-emerald-100">
                                 {montantFormate(totalBalance)} 
-                                <span className={`text-lg ml-2 ${futureBalance >= 0 ? "text-emerald-500" : "text-red-500"}`}>
-                                    ({futureBalance}€)
+                                <span className={`text-lg ml-2 ${futureBalance >= 0 ? "text-emerald-500 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
+                                    ({montantFormate(futureBalance)})
                                 </span>
                             </p>
                         </div>                    
@@ -702,25 +730,25 @@ const App = () => {
             {/* Formulaire */}
             <form
                 onSubmit={editTransaction ? saveChanges : addTransaction}
-                className="form-transaction bg-white p-6 rounded-2xl shadow-lg max-w-2xl w-full mx-auto"
+                className="form-transaction bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg w-full mx-auto"
             >
-                <h3 className="text-xl font-semibold text-gray-800 mb-6">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-6">
                     {editTransaction ? "Modifier la transaction" : "Nouvelle transaction"}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Date</label>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
                         <input
                             type="date"
                             name="date"
                             value={formData.date}
                             onChange={handleChange}
                             required
-                            className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                            className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Montant</label>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Montant</label>
                         <input
                             type="number"
                             name="montant"
@@ -728,27 +756,27 @@ const App = () => {
                             onChange={handleChange}
                             placeholder="Montant"
                             required
-                            className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                            className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                         />
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-medium text-gray-700">Description</label>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                         <input
                             type="text"
                             name="description"
                             value={formData.description}
                             onChange={handleChange}
                             placeholder="Description"
-                            className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                            className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Récurrence</label>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Récurrence</label>
                         <select
                             name="recurrence"
                             value={formData.recurrence}
                             onChange={handleChange}
-                            className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                            className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                         >
                             <option value="none">Aucune</option>
                             <option value="day">Jour</option>
@@ -759,7 +787,7 @@ const App = () => {
                     {formData.recurrence !== "none" && (
                         <>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Nombre</label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Nombre</label>
                                 <input
                                     type="number"
                                     name="recurrenceStep"
@@ -768,17 +796,17 @@ const App = () => {
                                     placeholder="Nombre"
                                     min="1"
                                     required
-                                    className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                                    className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Date de fin de récurrence</label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Date de fin de récurrence</label>
                                 <input
                                     type="date"
                                     name="recurrenceEndDate"
                                     value={formData.recurrenceEndDate}
                                     onChange={handleChange}
-                                    className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                                    className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                                 />
                             </div>
                         </>
@@ -790,27 +818,48 @@ const App = () => {
                         editTransaction ? "bg-yellow-500" : "bg-blue-500"
                     } text-white px-6 py-2 rounded-lg transition-colors duration-200 hover:${
                         editTransaction ? "bg-yellow-700" : "bg-blue-700"
-                    }`}
+                    } dark:bg-yellow-600 dark:hover:bg-yellow-700`}
                 >
                     {editTransaction
                         ? "Modifier la transaction"
                         : "Ajouter la transaction"}
                 </button>
             </form>
-                            {/* Graphique */}
-                            <div className="bg-white rounded-2xl shadow-lg p-6 flex justify-center items-center">
-                <div style={{ height: '100%', width: '100%' }}>
-                    <canvas ref={chartRef}></canvas>
-                </div>
+                            {/* Graphique ou message alternatif */}
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+                {transactions.length > 0 ? (
+                    <div className="flex justify-center items-center" style={{ height: '100%', width: '100%' }}>
+                        <canvas ref={chartRef}></canvas>
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                        <div className="bg-gray-100 dark:bg-gray-700 rounded-full p-6 mb-4">
+                            <svg className="w-16 h-16 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
+                            Aucune transaction à afficher
+                        </h3>
+                        <p className="text-gray-500 dark:text-gray-400 mb-6">
+                            Commencez à ajouter des transactions pour voir l'évolution de votre solde dans le temps.
+                        </p>
+                        <div className="animate-bounce">
+                            <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            </svg>
+                        </div>
+                    </div>
+                )}
             </div>
             </div>
             {/* Afficher les erreurs */}
-            {error && <div className="text-red-500 mb-4">{error}</div>}
+            {error && <div className="text-red-500 dark:text-red-400 mb-4">{error}</div>}
             {/* Ajout des sélecteurs de mois et d'année */}
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
                 <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
                     <select
-                        className="p-2 border rounded-lg capitalize"
+                        className="p-2 border rounded-lg capitalize dark:bg-gray-700 dark:text-white"
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(e.target.value)}
                     >
@@ -822,7 +871,7 @@ const App = () => {
                         ))}
                     </select>
                     <select
-                        className="p-2 border rounded-lg"
+                        className="p-2 border rounded-lg dark:bg-gray-700 dark:text-white"
                         value={selectedYear}
                         onChange={(e) => setSelectedYear(e.target.value)}
                     >
@@ -837,13 +886,13 @@ const App = () => {
                 <div className="flex space-x-4">
                     <button
                         onClick={deleteFilteredTransactions}
-                        className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm"
+                        className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm dark:bg-red-600 dark:hover:bg-red-700"
                     >
                         <span>Supprimer les transactions filtrées</span>
                     </button>
                     <button
                         onClick={deleteNonFilteredTransactions}
-                        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm"
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm dark:bg-orange-600 dark:hover:bg-orange-700"
                     >
                         <span>Supprimer les transactions non filtrées</span>
                     </button>
@@ -854,25 +903,25 @@ const App = () => {
                 {Object.entries(groupTransactionsByMonth(filterTransactionsByMonth(transactions)))
                     .sort((a, b) => moment(b[0], 'YYYY-MM').diff(moment(a[0], 'YYYY-MM')))
                     .map(([month, data]) => (
-                    <div key={month} className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <div key={month} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
                             <div className="flex justify-between items-center">
-                                <h3 className="text-lg font-semibold text-gray-800 capitalize">
+                                <h3 className="text-lg font-semibold text-gray-800 dark:text-white capitalize">
                                     {moment(month, 'YYYY-MM').format('MMMM YYYY')}
                                 </h3>
-                                <div className="text-sm text-gray-600">
+                                <div className="text-sm text-gray-600 dark:text-gray-400">
                                     <span className="font-medium">Solde du mois:</span> {montantFormate(data.monthlyBalance)}
                                     <span className="mx-2">|</span>
                                     <span className="font-medium">Solde:</span> {montantFormate(data.initBalance)}
                                 </div>
                             </div>
                         </div>
-                        <div className="divide-y divide-gray-200">
+                        <div className="divide-y divide-gray-200 dark:divide-gray-600">
                             {data.transactions.map((transaction, index) => (
                                 <div key={transaction.id} 
                                      onMouseEnter={() => setHoveredTransactionId(transaction.id)}
                                      onMouseLeave={() => setHoveredTransactionId(null)}
-                                     className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150 relative">
+                                     className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 relative">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-4">
                                             <div className="flex-shrink-0">
@@ -883,10 +932,10 @@ const App = () => {
                                                 }`}></div>
                                             </div>
                                             <div>
-                                                <p className="text-sm font-medium text-gray-900">
+                                                <p className="text-sm font-medium text-gray-900 dark:text-white">
                                                     {transaction.description || "Sans description"}
                                                 </p>
-                                                <p className="text-xs text-gray-500">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">
                                                     {moment(transaction.date).format("DD MMMM YYYY")}
                                                 </p>
                                             </div>
@@ -894,7 +943,7 @@ const App = () => {
                                         
                                         <div className="flex items-center space-x-4">
                                         {hoveredTransactionId === transaction.id && (
-                                        <div className="bg-gray-800 text-white px-3 py-1 rounded shadow-lg text-sm z-10">
+                                        <div className="bg-gray-800 dark:bg-gray-600 text-white dark:text-gray-200 px-3 py-1 rounded shadow-lg text-sm z-10">
                                             Solde: {montantFormate(transaction.solde)}
                                         </div>
                                     )}
@@ -912,17 +961,17 @@ const App = () => {
                                             <div className="flex space-x-2">
                                                 <button
                                                     onClick={() => startEditing(transaction)}
-                                                    className="p-1 hover:bg-gray-100 rounded-full transition-colors duration-150"
+                                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-150"
                                                 >
-                                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                     </svg>
                                                 </button>
                                                 <button
                                                     onClick={() => deleteTransaction(transaction.id)}
-                                                    className="p-1 hover:bg-gray-100 rounded-full transition-colors duration-150"
+                                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-150"
                                                 >
-                                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                     </svg>
                                                 </button>
@@ -939,23 +988,23 @@ const App = () => {
             {/* Modale de confirmation de suppression */}
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                             Confirmer la suppression
                         </h3>
-                        <p className="text-gray-600 mb-6">
+                        <p className="text-gray-600 dark:text-gray-400 mb-6">
                             Êtes-vous sûr de vouloir supprimer toutes les transactions ? Cette action est irréversible.
                         </p>
                         <div className="flex justify-end space-x-4">
                             <button
                                 onClick={() => setShowModal(false)}
-                                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-150"
+                                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-500 transition-colors duration-150"
                             >
                                 Annuler
                             </button>
                             <button
                                 onClick={deleteAllTransactions}
-                                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-150"
+                                className="px-4 py-2 bg-red-500 dark:bg-red-600 text-white rounded-lg hover:bg-red-600 dark:hover:bg-red-700 transition-colors duration-150"
                             >
                                 Confirmer
                             </button>
@@ -967,12 +1016,12 @@ const App = () => {
             {/* Modale d'exportation */}
             {showExportModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                             Exporter les transactions
                         </h3>
                         <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Nom du fichier
                             </label>
                             <input
@@ -980,19 +1029,19 @@ const App = () => {
                                 value={fileName}
                                 onChange={(e) => setFileName(e.target.value)}
                                 placeholder="transactions"
-                                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                             />
                         </div>
                         <div className="flex justify-end space-x-4">
                             <button
                                 onClick={() => setShowExportModal(false)}
-                                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-150"
+                                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-500 transition-colors duration-150"
                             >
                                 Annuler
                             </button>
                             <button
                                 onClick={confirmExport}
-                                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-150"
+                                className="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors duration-150"
                             >
                                 Exporter
                             </button>
@@ -1000,6 +1049,22 @@ const App = () => {
                     </div>
                 </div>
             )}
+            {/* Bouton Dark Mode */}
+            <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="fixed top-4 right-4 p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 z-50"
+                aria-label="Toggle Dark Mode"
+            >
+                {darkMode ? (
+                    <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                ) : (
+                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                )}
+            </button>
         </div>
     );
 };
