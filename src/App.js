@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import moment from "moment";
 import 'moment/locale/fr';  // Import de la locale française
 import { Chart } from 'chart.js/auto'; // Import de Chart.js
-import { auth, saveTransaction, deleteTransaction, updateTransaction, getAllTransactions } from './firebase';
+import { auth, saveMultipleTransactions, deleteTransaction, updateTransaction, getAllTransactions, deleteAllUserTransactions, deleteMultipleTransactions } from './firebase';
 import Auth from './components/Auth';
 
 // Configurer Moment.js pour utiliser le français
@@ -35,6 +35,9 @@ const App = () => {
     const [editTransaction, setEditTransaction] = useState(null);
     const [showDeleteFilteredModal, setShowDeleteFilteredModal] = useState(false);
     const [showDeleteNonFilteredModal, setShowDeleteNonFilteredModal] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+    const [showErrorMessage, setShowErrorMessage] = useState(false);
 
     // Charger les transactions depuis Firestore lors de la connexion
     useEffect(() => {
@@ -182,21 +185,7 @@ const App = () => {
         };
 
         try {
-            if (formData.recurrence !== "none") {
-                // Générer les transactions récurrentes
-                const recurrentTransactions = generateRecurrentTransactions(baseTransaction);
-                
-                // Sauvegarder chaque transaction récurrente
-                for (const transaction of recurrentTransactions) {
-                    await handleAddTransaction({
-                        ...transaction,
-                        montant: transaction.montant.toString().replace(',', '.')
-                    });
-                }
-            } else {
-                // Sauvegarder uniquement la transaction de base
-                await handleAddTransaction(baseTransaction);
-            }
+            await handleAddTransaction(baseTransaction);
 
             // Réinitialiser le formulaire après l'ajout
             setFormData({
@@ -213,25 +202,48 @@ const App = () => {
     };
 
     // Sauvegarder une transaction dans Firestore
-    const handleAddTransaction = async (newTransaction) => {
-        if (!user) return;
+    const handleAddTransaction = async (transaction) => {
+        try {
+            setIsLoading(true);
+            let transactionsToAdd = [transaction];
 
-        // S'assurer que le montant est un nombre correctement formaté
-        const formattedTransaction = {
-            ...newTransaction,
-            montant: newTransaction.montant.toString().replace(',', '.')
-        };
+            // Si c'est une transaction récurrente, générer toutes les occurrences
+            if (transaction.recurrence !== "none" && transaction.recurrenceEndDate) {
+                const recurrentTransactions = generateRecurrentTransactions(transaction);
+                transactionsToAdd = [...transactionsToAdd, ...recurrentTransactions];
+            }
 
-        const { error } = await saveTransaction(user.uid, formattedTransaction);
-        if (!error) {
-            setTransactions(prev => {
-                const updated = [...prev, formattedTransaction];
-                updateCumulativeBalances(updated);
-                return updated;
-            });
-            setShowModal(false);
+            // Sauvegarder toutes les transactions en une seule opération
+            const result = await saveMultipleTransactions(user.uid, transactionsToAdd);
+            
+            if (result.success) {
+                setTransactions(prevTransactions => [...prevTransactions, ...transactionsToAdd]);
+                setShowSuccessMessage(true);
+                setTimeout(() => setShowSuccessMessage(false), 3000);
+                
+                // Réinitialiser le formulaire
+                setFormData({
+                    date: moment().format("YYYY-MM-DD"),
+                    montant: "",
+                    description: "",
+                    recurrence: "none",
+                    recurrenceStep: "1",
+                    recurrenceEndDate: moment().add(1, "year").format("YYYY-MM-DD"),
+                });
+                
+                // Mettre à jour les soldes
+                updateCumulativeBalances([...transactions, ...transactionsToAdd]);
+            } else {
+                setShowErrorMessage("Erreur lors de la création des transactions");
+                setTimeout(() => setShowErrorMessage(false), 3000);
+            }
+        } catch (error) {
+            console.error("Erreur lors de l'ajout des transactions:", error);
+            setShowErrorMessage("Erreur lors de la création des transactions");
+            setTimeout(() => setShowErrorMessage(false), 3000);
+        } finally {
+            setIsLoading(false);
         }
-        return { error };
     };
 
     // Fonction pour démarrer la modification
@@ -355,19 +367,29 @@ const App = () => {
 
     // Supprimer toutes les transactions
     const deleteAllTransactions = async () => {
-        if (!user) return;
-
         try {
-            for (const transaction of transactions) {
-                await handleDeleteTransaction(transaction.id);
+            setIsLoading(true);
+            const result = await deleteAllUserTransactions(user.uid);
+            if (result.success) {
+                setTransactions([]);
+                setShowSuccessMessage(true);
+                setTimeout(() => setShowSuccessMessage(false), 3000);
+                setShowModal(false); // Fermer la modale
+                setShowDeleteFilteredModal(false); // Fermer la modale de suppression des transactions filtrées
+                setShowDeleteNonFilteredModal(false); // Fermer la modale de suppression des transactions non filtrées
+                setTotalBalance(0);
+                setFutureBalance(0);
+                updateCumulativeBalances([]);
+            } else {
+                setShowErrorMessage("Erreur lors de la suppression des transactions");
+                setTimeout(() => setShowErrorMessage(false), 3000);
             }
-            setTransactions([]);
-            setTotalBalance(0);
-            setFutureBalance(0);
-            updateCumulativeBalances([]);
-            setShowModal(false); // Fermer la modale
         } catch (error) {
-            console.error('Erreur lors de la suppression de toutes les transactions:', error);
+            console.error("Erreur lors de la suppression:", error);
+            setShowErrorMessage("Erreur lors de la suppression des transactions");
+            setTimeout(() => setShowErrorMessage(false), 3000);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -376,26 +398,47 @@ const App = () => {
         if (!user) return;
 
         try {
+            setIsLoading(true);
             const filteredTransactions = filterTransactionsByMonth(transactions);
             console.log('Transactions filtrées à supprimer:', filteredTransactions);
 
-            for (const transaction of filteredTransactions) {
-                await handleDeleteTransaction(transaction.id);
+            if (filteredTransactions.length === 0) {
+                console.log('Aucune transaction à supprimer');
+                return;
             }
 
-            // Mise à jour des états
-            const remainingTransactions = transactions.filter(t => 
-                !filteredTransactions.some(ft => ft.id === t.id)
-            );
-            setTransactions(remainingTransactions);
-            updateCumulativeBalances(remainingTransactions);
+            // Utiliser l'ID complet de la transaction
+            const transactionIds = filteredTransactions.map(t => t.id);
+            console.log('IDs des transactions filtrées à supprimer:', transactionIds);
             
-            // Réinitialisation des filtres
-            setSelectedMonth('all');
-            setSelectedYear('all');
-            setShowModal(false);
+            const result = await deleteMultipleTransactions(user.uid, transactionIds);
+
+            if (result.success) {
+                console.log('Suppression réussie, mise à jour du state...');
+                // Mise à jour des états en utilisant les IDs supprimés
+                const remainingTransactions = transactions.filter(t => 
+                    !result.deletedIds.includes(t.id)
+                );
+                setTransactions(remainingTransactions);
+                updateCumulativeBalances(remainingTransactions);
+                
+                // Réinitialisation des filtres
+                setSelectedMonth('all');
+                setSelectedYear('all');
+                setShowModal(false);
+                setShowSuccessMessage(true);
+                setTimeout(() => setShowSuccessMessage(false), 3000);
+            } else {
+                console.error('Échec de la suppression:', result.error);
+                setShowErrorMessage("Erreur lors de la suppression des transactions");
+                setTimeout(() => setShowErrorMessage(false), 3000);
+            }
         } catch (error) {
             console.error('Erreur lors de la suppression des transactions filtrées:', error);
+            setShowErrorMessage("Erreur lors de la suppression des transactions");
+            setTimeout(() => setShowErrorMessage(false), 3000);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -404,26 +447,50 @@ const App = () => {
         if (!user) return;
 
         try {
+            setIsLoading(true);
             const filteredTransactions = filterTransactionsByMonth(transactions);
             const nonFilteredTransactions = transactions.filter(t => 
                 !filteredTransactions.some(ft => ft.id === t.id)
             );
             console.log('Transactions non filtrées à supprimer:', nonFilteredTransactions);
             
-            for (const transaction of nonFilteredTransactions) {
-                await handleDeleteTransaction(transaction.id);
+            if (nonFilteredTransactions.length === 0) {
+                console.log('Aucune transaction non filtrée à supprimer');
+                return;
             }
 
-            // Mise à jour des états
-            setTransactions(filteredTransactions);
-            updateCumulativeBalances(filteredTransactions);
+            // Utiliser l'ID complet de la transaction
+            const transactionIds = nonFilteredTransactions.map(t => t.id);
+            console.log('IDs des transactions non filtrées à supprimer:', transactionIds);
             
-            // Réinitialisation des filtres
-            setSelectedMonth('all');
-            setSelectedYear('all');
-            setShowModal(false);
+            const result = await deleteMultipleTransactions(user.uid, transactionIds);
+
+            if (result.success) {
+                console.log('Suppression réussie, mise à jour du state...');
+                // Mise à jour des états en utilisant les IDs supprimés
+                const remainingTransactions = transactions.filter(t => 
+                    !result.deletedIds.includes(t.id)
+                );
+                setTransactions(remainingTransactions);
+                updateCumulativeBalances(remainingTransactions);
+                
+                // Réinitialisation des filtres
+                setSelectedMonth('all');
+                setSelectedYear('all');
+                setShowModal(false);
+                setShowSuccessMessage(true);
+                setTimeout(() => setShowSuccessMessage(false), 3000);
+            } else {
+                console.error('Échec de la suppression:', result.error);
+                setShowErrorMessage("Erreur lors de la suppression des transactions");
+                setTimeout(() => setShowErrorMessage(false), 3000);
+            }
         } catch (error) {
             console.error('Erreur lors de la suppression des transactions non filtrées:', error);
+            setShowErrorMessage("Erreur lors de la suppression des transactions");
+            setTimeout(() => setShowErrorMessage(false), 3000);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -453,10 +520,6 @@ const App = () => {
         const updatedTransactions = sortedTransactions.map((transaction) => {
             // S'assurer que le montant est correctement formaté
             const amount = parseFloat(transaction.montant.toString().replace(',', '.'));
-            if (isNaN(amount)) {
-                console.error('Montant invalide:', transaction.montant);
-                return transaction;
-            }
 
             total += amount;
             
@@ -866,7 +929,9 @@ const App = () => {
             <div className={`fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 z-50 ${showStickyHeader ? 'translate-y-0' : '-translate-y-full'}`}>
                 <div className="container mx-auto px-4 py-2">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Vue d'ensemble</h2>
+                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                            Vue d'ensemble
+                        </h2>
                         <div className="flex space-x-4 items-center">
                             <div className="text-sm">
                                 <span className="font-medium dark:text-white">Solde actuel:</span>
@@ -890,7 +955,7 @@ const App = () => {
                                 </span>
                                 <button
                                     onClick={() => auth.signOut()}
-                                    className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200"
+                                    className="px-3 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200"
                                 >
                                     Déconnexion
                                 </button>
@@ -1096,6 +1161,22 @@ const App = () => {
             </div>
             {/* Afficher les erreurs */}
             {error && <div className="text-red-500 dark:text-red-400 mb-4">{error}</div>}
+            {/* Messages de succès et d'erreur */}
+            {showSuccessMessage && (
+                <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg">
+                    Toutes les transactions ont été supprimées avec succès
+                </div>
+            )}
+            {showErrorMessage && (
+                <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg">
+                    {showErrorMessage}
+                </div>
+            )}
+            {isLoading && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+                </div>
+            )}
             {/* Ajout des sélecteurs de mois et d'année */}
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
                 <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
