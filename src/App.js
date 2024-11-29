@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import moment from "moment";
 import 'moment/locale/fr';  // Import de la locale française
 import { Chart } from 'chart.js/auto'; // Import de Chart.js
-import { auth, saveMultipleTransactions, deleteTransaction, updateTransaction, getAllTransactions, deleteAllUserTransactions, deleteMultipleTransactions } from './firebase';
+import { auth, saveMultipleTransactions, deleteTransaction, updateTransaction, getAllTransactions, deleteAllUserTransactions, deleteMultipleTransactions, deleteUserAccount } from './firebase';
 import Auth from './components/Auth';
 
 // Configurer Moment.js pour utiliser le français
@@ -38,6 +38,9 @@ const App = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
     const [showErrorMessage, setShowErrorMessage] = useState(false);
+    const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+    const [deleteAccountError, setDeleteAccountError] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Charger les transactions depuis Firestore lors de la connexion
     useEffect(() => {
@@ -889,6 +892,26 @@ const App = () => {
         setUser(user);
     };
 
+    const handleDeleteAccount = async () => {
+        if (!user) return;
+        
+        setIsDeleting(true);
+        setDeleteAccountError('');
+        
+        try {
+            const result = await deleteUserAccount();
+            if (result.success) {
+                setShowDeleteAccountModal(false);
+            } else {
+                setDeleteAccountError(result.error);
+            }
+        } catch (error) {
+            setDeleteAccountError('Une erreur est survenue lors de la suppression du compte');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     if (!user) {
         return <Auth onAuthSuccess={handleAuthSuccess} />;
     }
@@ -899,8 +922,14 @@ const App = () => {
             <div className={`fixed bg-white dark:bg-gray-800 shadow-lg px-4 py-2 rounded-full top-4 right-4 z-50 transition-opacity duration-300 ${showStickyHeader ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                 <div className="flex items-center space-x-4">
                     <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {user.email}
+                        {user?.email}
                     </span>
+                    <button
+                        onClick={() => setShowDeleteAccountModal(true)}
+                        className="px-3 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200 mr-2"
+                    >
+                        Supprimer le compte
+                    </button>
                     <button
                         onClick={() => auth.signOut()}
                         className="px-3 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200"
@@ -951,30 +980,35 @@ const App = () => {
 
                             <div className="flex items-center space-x-4">
                                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                                    {user.email}
+                                    {user?.email}
                                 </span>
+                                <button
+                                    onClick={() => setShowDeleteAccountModal(true)}
+                                    className="px-3 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200 mr-2"
+                                >
+                                    Supprimer le compte
+                                </button>
                                 <button
                                     onClick={() => auth.signOut()}
                                     className="px-3 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200"
                                 >
                                     Déconnexion
                                 </button>
-                                                            {/* Bouton Dark Mode dans le header */}
-                            <button
-                                onClick={() => setDarkMode(!darkMode)}
-                                className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
-                                aria-label="Toggle Dark Mode"
-                            >
-                                {darkMode ? (
-                                    <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                                    </svg>
-                                )}
-                            </button>
+                                <button
+                                    onClick={() => setDarkMode(!darkMode)}
+                                    className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
+                                    aria-label="Toggle Dark Mode"
+                                >
+                                    {darkMode ? (
+                                        <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                        </svg>
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1177,136 +1211,6 @@ const App = () => {
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
                 </div>
             )}
-            {/* Ajout des sélecteurs de mois et d'année */}
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
-                <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-                    <select
-                        className="p-2 border rounded-lg capitalize dark:bg-gray-700 dark:text-white"
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(e.target.value)}
-                    >
-                        <option value="all">Tous les mois</option>
-                        {getAvailableMonths().map((month) => (
-                            <option key={month} value={month}>
-                                {moment().month(parseInt(month) - 1).format("MMMM")}
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        className="p-2 border rounded-lg dark:bg-gray-700 dark:text-white"
-                        value={selectedYear}
-                        onChange={(e) => setSelectedYear(e.target.value)}
-                    >
-                        <option value="all">Toutes les années</option>
-                        {getAvailableYears().map((year) => (
-                            <option key={year} value={year}>
-                                {year}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className="flex space-x-4">
-                    <button
-                        onClick={() => setShowDeleteFilteredModal(true)}
-                        className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm dark:bg-red-600 dark:hover:bg-red-700"
-                    >
-                        <span>Supprimer les transactions filtrées</span>
-                    </button>
-                    <button
-                        onClick={() => setShowDeleteNonFilteredModal(true)}
-                        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm dark:bg-orange-600 dark:hover:bg-orange-700"
-                    >
-                        <span>Supprimer les transactions non filtrées</span>
-                    </button>
-                </div>
-            </div>
-            {/* Liste des transactions */}
-            <div className="space-y-6">
-                {Object.entries(groupTransactionsByMonth(filterTransactionsByMonth(transactions)))
-                    .sort((a, b) => moment(b[0], 'YYYY-MM').diff(moment(a[0], 'YYYY-MM')))
-                    .map(([month, data]) => (
-                    <div key={month} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-lg font-semibold text-gray-800 dark:text-white capitalize">
-                                    {moment(month, 'YYYY-MM').format('MMMM YYYY')}
-                                </h3>
-                                <div className="text-sm text-gray-600 dark:text-gray-400">
-                                    <span className="font-medium">Solde du mois:</span> {montantFormate(data.monthlyBalance)}
-                                    <span className="mx-2">|</span>
-                                    <span className="font-medium">Solde:</span> {montantFormate(data.endBalance)}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="divide-y divide-gray-200 dark:divide-gray-600">
-                            {data.transactions.map((transaction, index) => (
-                                <div key={transaction.id} 
-                                     onMouseEnter={() => setHoveredTransactionId(transaction.id)}
-                                     onMouseLeave={() => setHoveredTransactionId(null)}
-                                     className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 relative">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center space-x-4">
-                                            <div className="flex-shrink-0">
-                                                <div className={`w-2 h-2 rounded-full ${
-                                                    parseFloat(transaction.montant) >= 0 
-                                                    ? 'bg-emerald-400' 
-                                                    : 'bg-red-400'
-                                                }`}></div>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                                    {transaction.description || "Sans description"}
-                                                </p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                    {moment(transaction.date).format("DD MMMM YYYY")}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-center space-x-4">
-                                        {hoveredTransactionId === transaction.id && (
-                                        <div className="bg-gray-800 dark:bg-gray-600 text-white dark:text-gray-200 px-3 py-1 rounded shadow-lg text-sm z-10">
-                                            Solde: {montantFormate(transaction.solde)}
-                                        </div>
-                                    )}
-                                            <span className={`text-sm font-medium px-2 py-1 rounded ${
-                                                parseFloat(transaction.montant) >= 0 
-                                                ? 'bg-emerald-400/30' 
-                                                : 'bg-red-400/30'
-                                            } ${
-                                                parseFloat(transaction.montant) >= 0 
-                                                ? 'text-emerald-600' 
-                                                : 'text-red-600'
-                                            }`}>
-                                                {montantFormate(transaction.montant)}
-                                            </span>
-                                            <div className="flex space-x-2">
-                                                <button
-                                                    onClick={() => startEditing(transaction)}
-                                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-150"
-                                                >
-                                                    <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                    </svg>
-                                                </button>
-                                                <button
-                                                    onClick={() => removeTransaction(transaction.id)}
-                                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-150"
-                                                >
-                                                    <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
             {/* Modale de confirmation de suppression */}
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -1433,6 +1337,173 @@ const App = () => {
                     </div>
                 </div>
             )}
+            {/* Modale de suppression de compte */}
+            {showDeleteAccountModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                            Supprimer votre compte ?
+                        </h3>
+                        <p className="text-gray-700 dark:text-gray-300 mb-6">
+                            Cette action est irréversible. Toutes vos données seront définitivement supprimées.
+                        </p>
+                        {deleteAccountError && (
+                            <div className="mb-4 p-2 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded">
+                                {deleteAccountError}
+                            </div>
+                        )}
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={() => {
+                                    setShowDeleteAccountModal(false);
+                                    setDeleteAccountError('');
+                                }}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                                disabled={isDeleting}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={handleDeleteAccount}
+                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? 'Suppression...' : 'Confirmer la suppression'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Liste des transactions */}
+            <div className="space-y-6">
+                {Object.entries(groupTransactionsByMonth(filterTransactionsByMonth(transactions)))
+                    .sort((a, b) => moment(b[0], 'YYYY-MM').diff(moment(a[0], 'YYYY-MM')))
+                    .map(([month, data]) => (
+                    <div key={month} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-lg font-semibold text-gray-800 dark:text-white capitalize">
+                                    {moment(month, 'YYYY-MM').format('MMMM YYYY')}
+                                </h3>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">
+                                    <span className="font-medium">Solde du mois:</span> {montantFormate(data.monthlyBalance)}
+                                    <span className="mx-2">|</span>
+                                    <span className="font-medium">Solde:</span> {montantFormate(data.endBalance)}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="divide-y divide-gray-200 dark:divide-gray-600">
+                            {data.transactions.map((transaction, index) => (
+                                <div key={transaction.id} 
+                                     onMouseEnter={() => setHoveredTransactionId(transaction.id)}
+                                     onMouseLeave={() => setHoveredTransactionId(null)}
+                                     className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 relative">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="flex-shrink-0">
+                                                <div className={`w-2 h-2 rounded-full ${
+                                                    parseFloat(transaction.montant) >= 0 
+                                                    ? 'bg-emerald-400' 
+                                                    : 'bg-red-400'
+                                                }`}></div>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                                    {transaction.description || "Sans description"}
+                                                </p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                    {moment(transaction.date).format("DD MMMM YYYY")}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center space-x-4">
+                                        {hoveredTransactionId === transaction.id && (
+                                        <div className="bg-gray-800 dark:bg-gray-600 text-white dark:text-gray-200 px-3 py-1 rounded shadow-lg text-sm z-10">
+                                            Solde: {montantFormate(transaction.solde)}
+                                        </div>
+                                    )}
+                                            <span className={`text-sm font-medium px-2 py-1 rounded ${
+                                                parseFloat(transaction.montant) >= 0 
+                                                ? 'bg-emerald-400/30' 
+                                                : 'bg-red-400/30'
+                                            } ${
+                                                parseFloat(transaction.montant) >= 0 
+                                                ? 'text-emerald-600' 
+                                                : 'text-red-600'
+                                            }`}>
+                                                {montantFormate(transaction.montant)}
+                                            </span>
+                                            <div className="flex space-x-2">
+                                                <button
+                                                    onClick={() => startEditing(transaction)}
+                                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-150"
+                                                >
+                                                    <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => removeTransaction(transaction.id)}
+                                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-150"
+                                                >
+                                                    <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Ajout des sélecteurs de mois et d'année */}
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
+                <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+                    <select
+                        className="p-2 border rounded-lg capitalize dark:bg-gray-700 dark:text-white"
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                    >
+                        <option value="all">Tous les mois</option>
+                        {getAvailableMonths().map((month) => (
+                            <option key={month} value={month}>
+                                {moment().month(parseInt(month) - 1).format("MMMM")}
+                            </option>
+                        ))}
+                    </select>
+                    <select
+                        className="p-2 border rounded-lg dark:bg-gray-700 dark:text-white"
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value)}
+                    >
+                        <option value="all">Toutes les années</option>
+                        {getAvailableYears().map((year) => (
+                            <option key={year} value={year}>
+                                {year}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                <div className="flex space-x-4">
+                    <button
+                        onClick={() => setShowDeleteFilteredModal(true)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm dark:bg-red-600 dark:hover:bg-red-700"
+                    >
+                        <span>Supprimer les transactions filtrées</span>
+                    </button>
+                    <button
+                        onClick={() => setShowDeleteNonFilteredModal(true)}
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-sm dark:bg-orange-600 dark:hover:bg-orange-700"
+                    >
+                        <span>Supprimer les transactions non filtrées</span>
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };
